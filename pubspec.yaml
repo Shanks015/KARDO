@@ -1,0 +1,99 @@
+name: mobile_app
+description: "kardo — Offline Business Card Scanner"
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none'
+
+version: 2.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.1.2
+  google_fonts: ^6.2.1
+  flutter_riverpod: ^2.6.1
+  flutter_animate: ^4.5.2
+  lottie: ^3.1.3
+  shared_preferences: ^2.5.2
+  path_provider: ^2.1.5
+  pdf: ^3.11.2
+  printing: ^5.13.5
+  excel: ^4.0.6
+  share_plus: ^10.1.4
+  intl: ^0.19.0
+  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_entity_extraction: ^0.13.0
+  tflite_flutter: ^0.12.1
+
+  # Camera live feed
+  camera: ^0.11.0+2
+
+  # Pure-Dart image processing (perspective correction, grayscale enhancement)
+  image: ^4.1.7
+
+  # Dominant color extraction for card theming
+  palette_generator: ^0.3.3
+
+  # File path utilities
+  path: ^1.9.0
+
+  # QR Code generation (vCard)
+  qr_flutter: ^4.1.0
+
+  # NFC tap-to-share
+  nfc_manager: ^3.3.0
+
+  # SQLite local database (replaces SharedPreferences for card storage)
+  sqflite: ^2.3.3+1
+
+  # Clickable phone/email/URL links
+  url_launcher: ^6.3.1
+  open_file: ^3.3.2
+
+  # Hybrid AI & Contacts
+  google_generative_ai: ^0.4.6
+  connectivity_plus: ^6.1.0
+  flutter_dotenv: ^5.2.1
+  flutter_contacts: ^1.1.9+2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
+
+  assets:
+    - assets/models/ner_model.tflite
+    - assets/test_cards/
+    - .env
