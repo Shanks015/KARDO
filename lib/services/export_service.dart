@@ -15,20 +15,12 @@ class ExportService {
   }
 
   Future<Directory> _getExportDirectory() async {
-    if (Platform.isAndroid) {
-      final dir = Directory('/storage/emulated/0/Download/kardo');
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-      return dir;
-    } else {
-      final dir = await getApplicationDocumentsDirectory();
-      final exportDir = Directory('${dir.path}/kardo');
-      if (!await exportDir.exists()) {
-        await exportDir.create(recursive: true);
-      }
-      return exportDir;
+    final dir = await getTemporaryDirectory();
+    final exportDir = Directory('${dir.path}/kardo_exports');
+    if (!await exportDir.exists()) {
+      await exportDir.create(recursive: true);
     }
+    return exportDir;
   }
 
   /// Export a single card as a styled PDF (image at top + structured data below)
@@ -135,7 +127,7 @@ class ExportService {
                 pw.Spacer(),
                 pw.Center(
                   child: pw.Text(
-                    'Exported by kardo — Offline Business Card Scanner',
+                    'Exported by kardo — Business Card Scanner',
                     style: const pw.TextStyle(color: PdfColors.grey400, fontSize: 8),
                   ),
                 ),
@@ -312,7 +304,7 @@ class ExportService {
           _val(c, 'url'),
           _val(c, 'organization_type'),
           _val(c, 'notes').isNotEmpty ? _val(c, 'notes') : _val(c, 'remark'),
-          c['created_at'] ?? '',
+          c['timestamp'] ?? c['created_at'] ?? '',
         ];
 
         for (var j = 0; j < row.length; j++) {
@@ -360,7 +352,7 @@ class ExportService {
           _escapeCsv(_val(c, 'url')),
           _escapeCsv(_val(c, 'organization_type')),
           _escapeCsv(_val(c, 'notes').isNotEmpty ? _val(c, 'notes') : _val(c, 'remark')),
-          _escapeCsv(c['created_at']?.toString() ?? ''),
+          _escapeCsv(c['timestamp']?.toString() ?? c['created_at']?.toString() ?? ''),
         ];
         buffer.writeln(row.join(','));
       }

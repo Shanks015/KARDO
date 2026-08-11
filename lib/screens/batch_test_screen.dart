@@ -6,18 +6,20 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/local_transformer_service.dart';
 import '../services/image_processor_service.dart';
-import '../services/cloud_ai_service.dart';
-
-class BatchTestScreen extends StatefulWidget {
+import '../services/groq_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/data_provider.dart';
+class BatchTestScreen extends ConsumerStatefulWidget {
   const BatchTestScreen({super.key});
 
   @override
-  State<BatchTestScreen> createState() => _BatchTestScreenState();
+  ConsumerState<BatchTestScreen> createState() => _BatchTestScreenState();
 }
 
-class _BatchTestScreenState extends State<BatchTestScreen> {
+class _BatchTestScreenState extends ConsumerState<BatchTestScreen> {
   bool _isProcessing = true;
   String _statusText = 'Initializing...';
   List<String> _assetPaths = [];
@@ -37,7 +39,15 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
       // 1. Find all test images
       setState(() => _statusText = 'Finding test images...');
       
-      _assetPaths = List.generate(18, (index) => 'assets/test_cards/card_${index + 1}.jpeg');
+      final assetManifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      _assetPaths = assetManifest.listAssets()
+          .where((String key) => key.startsWith('assets/batch_test_cards/') && (key.endsWith('.jpeg') || key.endsWith('.jpg')))
+          .toList();
+      _assetPaths.sort((a, b) {
+        final numA = int.tryParse(a.split('_').last.split('.').first) ?? 0;
+        final numB = int.tryParse(b.split('_').last.split('.').first) ?? 0;
+        return numA.compareTo(numB);
+      });
 
       if (_assetPaths.isEmpty) {
         setState(() {
@@ -65,11 +75,16 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
 
         Map<String, dynamic>? result;
         try {
-          final connectivityResult = await (Connectivity().checkConnectivity());
-          final isOnline = connectivityResult != ConnectivityResult.none;
+          final bool forceOffline = false; // Hybrid: Use cloud if online
+          
+          if (!forceOffline) {
+            final connectivityResult = await (Connectivity().checkConnectivity());
+            final isOnline = !connectivityResult.contains(ConnectivityResult.none);
 
-          if (isOnline) {
-            result = await CloudAIService.extractCard(processedXFile);
+            if (isOnline) {
+              result = await GroqService.extractCard(processedXFile);
+              if (result != null) result['engine'] = 'cloud_vlm';
+            }
           }
         } catch (e) {
           debugPrint("Connectivity check failed: $e");
@@ -77,13 +92,36 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
 
         if (result == null) {
           result = await LocalTransformerService.extractCard(processedXFile);
+          result['engine'] = 'local_ocr';
         }
         _results.add(result!);
         _processedImagePaths.add(processed.processedImagePath);
+        
+        // Auto-save each card immediately
+        try {
+          final lowQualityImagePath = await ImageProcessorService.saveLowQualityCardImage(processed.processedImagePath);
+          final mappedData = {
+            'point_person': result['name'] ?? 'Not Found',
+            'department': result['job_title'] ?? 'Not Found',
+            'organization_name': result['company'] ?? 'Not Found',
+            'contact_number': result['phone'] ?? 'Not Found',
+            'contact_email': result['email'] ?? 'Not Found',
+            'url': result['website'] ?? 'Not Found',
+            'address': result['address'] ?? 'Not Found',
+            'notes': 'Batch Processed via ${result['engine'] ?? 'AI'}',
+            'category': 'BUSINESS',
+            'kanban_status': 'New Lead',
+            'image_path': lowQualityImagePath,
+          };
+          await ref.read(localCardsProvider.notifier).addCard(mappedData);
+        } catch (e) {
+          debugPrint('Failed to save card ${i + 1}: $e');
+        }
       }
 
       setState(() {
         _isProcessing = false;
+        _statusText = 'Finished processing and saving ${_assetPaths.length} cards.';
       });
     } catch (e) {
       setState(() {
@@ -96,47 +134,117 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
   Future<void> _exportCsv() async {
     if (_results.isEmpty) return;
     try {
-      final header = "Image,Name,Title,Company,Address,Phone,Email,URL\n";
+      final header = "Image,Engine,Name,NameScore,Title,TitleScore,Company,CompanyScore,Address,Phone,Email,URL\n";
       final buffer = StringBuffer(header);
+      
+      final htmlBuffer = StringBuffer();
+      htmlBuffer.writeln('<html><head><title>Batch Test Results</title>');
+      htmlBuffer.writeln('<style>body { font-family: sans-serif; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ddd; padding: 12px; vertical-align: top; } img { max-width: 300px; height: auto; border-radius: 8px; }</style>');
+      htmlBuffer.writeln('</head><body><h2>Batch Test Results (${_results.length} cards)</h2><table>');
+      htmlBuffer.writeln('<tr><th>Image</th><th>Extracted Details</th></tr>');
       
       for (int i = 0; i < _results.length; i++) {
         final r = _results[i];
         final img = _assetPaths[i].split('/').last;
-        final name = _escapeCsv(r['point_person'] ?? '');
-        final title = _escapeCsv(r['department'] ?? '');
-        final company = _escapeCsv(r['organization_name'] ?? '');
-        final address = _escapeCsv(r['location'] ?? '');
-        final phone = _escapeCsv(r['contact_number'] ?? '');
-        final email = _escapeCsv(r['contact_email'] ?? '');
-        final url = _escapeCsv(r['url'] ?? '');
+        final engine = r['engine'] ?? 'unknown';
+        final name = _escapeCsv(r['name'] ?? '');
+        final title = _escapeCsv(r['job_title'] ?? '');
+        final company = _escapeCsv(r['company'] ?? '');
+        final address = _escapeCsv(r['address'] ?? '');
+        final phone = _escapeCsv(r['phone'] ?? '');
+        final email = _escapeCsv(r['email'] ?? '');
+        final url = _escapeCsv(r['website'] ?? '');
         
-        buffer.writeln("$img,$name,$title,$company,$address,$phone,$email,$url");
+        final scores = r['_debug_scores'] as Map<String, dynamic>? ?? {};
+        final nameScore = (scores['name_score'] as double?)?.toStringAsFixed(1) ?? 'N/A';
+        final titleScore = (scores['title_score'] as double?)?.toStringAsFixed(1) ?? 'N/A';
+        final companyScore = (scores['company_score'] as double?)?.toStringAsFixed(1) ?? 'N/A';
+        
+        buffer.writeln("$img,$engine,$name,$nameScore,$title,$titleScore,$company,$companyScore,$address,$phone,$email,$url");
+        
+        // Base64 image for HTML
+        final path = _assetPaths[i];
+        final byteData = await rootBundle.load(path);
+        final base64String = base64Encode(byteData.buffer.asUint8List());
+        
+        htmlBuffer.writeln('<tr>');
+        htmlBuffer.writeln('<td style="width: 320px;"><img src="data:image/jpeg;base64,$base64String"/><br><br><b>$img</b><br><small>Engine: $engine</small></td>');
+        htmlBuffer.writeln('<td>');
+        htmlBuffer.writeln('<b>Name:</b> ${r['name'] ?? 'Not Found'} <small>($nameScore)</small><br><br>');
+        htmlBuffer.writeln('<b>Title:</b> ${r['job_title'] ?? 'Not Found'} <small>($titleScore)</small><br><br>');
+        htmlBuffer.writeln('<b>Company:</b> ${r['company'] ?? 'Not Found'} <small>($companyScore)</small><br><br>');
+        htmlBuffer.writeln('<b>Email:</b> ${r['email'] ?? 'Not Found'}<br><br>');
+        htmlBuffer.writeln('<b>Phone:</b> ${r['phone'] ?? 'Not Found'}<br><br>');
+        htmlBuffer.writeln('<b>Address:</b> ${r['address'] ?? 'Not Found'}<br><br>');
+        htmlBuffer.writeln('<b>Website:</b> ${r['website'] ?? 'Not Found'}');
+        htmlBuffer.writeln('</td>');
+        htmlBuffer.writeln('</tr>');
       }
       
-      final dir = Directory('/storage/emulated/0/Download');
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-      final file = File('${dir.path}/Offline_AI_Results_${DateTime.now().millisecondsSinceEpoch}.csv');
-      await file.writeAsString(buffer.toString());
+      htmlBuffer.writeln('</table></body></html>');
+      
+      final tempDir = await getTemporaryDirectory();
+      final csvFile = File('${tempDir.path}/Hybrid_AI_Results_${DateTime.now().millisecondsSinceEpoch}.csv');
+      await csvFile.writeAsString(buffer.toString());
+      
+      final htmlFile = File('${tempDir.path}/Hybrid_AI_Report_${DateTime.now().millisecondsSinceEpoch}.html');
+      await htmlFile.writeAsString(htmlBuffer.toString());
       
       setState(() => _hasExportedCsv = true);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved to Downloads!'),
-          backgroundColor: Colors.green.shade700,
-          action: SnackBarAction(
-            label: 'OPEN',
-            textColor: Colors.white,
-            onPressed: () => OpenFile.open(file.path),
-          ),
-        ),
-      );
+      await Share.shareXFiles([XFile(csvFile.path), XFile(htmlFile.path)], text: 'Batch Test Results (CSV + HTML)');
     } catch(e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Export failed: $e')),
       );
+    }
+  }
+
+  Future<void> _saveAllToDb() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+
+      for (int i = 0; i < _results.length; i++) {
+        final result = _results[i];
+        final imagePath = _processedImagePaths[i];
+        
+        final mappedData = {
+          'point_person': result['name'] ?? 'Not Found',
+          'department': result['job_title'] ?? 'Not Found',
+          'organization_name': result['company'] ?? 'Not Found',
+          'contact_number': result['phone'] ?? 'Not Found',
+          'contact_email': result['email'] ?? 'Not Found',
+          'url': result['website'] ?? 'Not Found',
+          'address': result['address'] ?? 'Not Found',
+          'notes': 'Batch Processed via ${result['engine'] ?? 'AI'}',
+          'category': 'BUSINESS',
+          'kanban_status': 'New Lead',
+          'card_image_path': imagePath,
+        };
+        
+        await ref.read(localCardsProvider.notifier).addCard(mappedData);
+      }
+      
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Successfully saved ${_results.length} cards to database!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -160,7 +268,13 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
               icon: Icon(_hasExportedCsv ? Icons.check_circle : Icons.download),
               onPressed: _exportCsv,
               tooltip: 'Export CSV',
-            )
+            ),
+          if (!_isProcessing)
+            IconButton(
+              icon: const Icon(Icons.save_alt),
+              onPressed: _saveAllToDb,
+              tooltip: 'Save All to Database',
+            ),
         ],
       ),
       body: _isProcessing
@@ -213,13 +327,13 @@ class _BatchTestScreenState extends State<BatchTestScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _buildField('Name', currentResult['point_person']),
-              _buildField('Title', currentResult['department']),
-              _buildField('Company', currentResult['organization_name']),
-              _buildField('Email', currentResult['contact_email']),
-              _buildField('Phone', currentResult['contact_number']),
-              _buildField('Address', currentResult['location']),
-              _buildField('URL', currentResult['url']),
+              _buildField('Name', currentResult['name']),
+              _buildField('Title', currentResult['job_title']),
+              _buildField('Company', currentResult['company']),
+              _buildField('Email', currentResult['email']),
+              _buildField('Phone', currentResult['phone']),
+              _buildField('Address', currentResult['address']),
+              _buildField('URL', currentResult['website']),
             ],
           ),
         ),

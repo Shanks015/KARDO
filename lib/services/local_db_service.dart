@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,12 +17,34 @@ class LocalDatabaseService {
     return _db!;
   }
 
+  /// Close the database safely (e.g. before restoring a backup)
+  static Future<void> closeDatabase() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
+  static Future<String> _getEncryptionKey() async {
+    const storage = FlutterSecureStorage();
+    String? key = await storage.read(key: 'db_encryption_key');
+    if (key == null) {
+      final random = Random.secure();
+      final values = List<int>.generate(32, (i) => random.nextInt(256));
+      key = base64UrlEncode(values);
+      await storage.write(key: 'db_encryption_key', value: key);
+    }
+    return key;
+  }
+
   static Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'snapcard.db');
+    final path = p.join(dbPath, 'snapcard_secure.db');
+    final password = await _getEncryptionKey();
 
     return await openDatabase(
       path,
+      password: password,
       version: 2,
       onCreate: (db, version) async {
         await db.execute('''
@@ -111,11 +135,18 @@ class LocalDatabaseService {
       );
       final nextSlNo = (maxResult ?? 0) + 1;
 
+      final captureTime = cardData['timestamp']?.toString().isNotEmpty == true 
+          ? cardData['timestamp'].toString() 
+          : (cardData['created_at']?.toString().isNotEmpty == true 
+              ? cardData['created_at'].toString() 
+              : DateTime.now().toIso8601String());
+
       final newCard = _sanitize({
         ...cardData,
         'sl_no': nextSlNo,
         'SL No': nextSlNo,
-        'timestamp': DateTime.now().toIso8601String(),
+        'timestamp': captureTime,
+        'created_at': captureTime,
       });
 
       await db.insert('cards', newCard, conflictAlgorithm: ConflictAlgorithm.replace);

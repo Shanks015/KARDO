@@ -1,11 +1,13 @@
+import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../services/groq_service.dart';
 import '../services/local_transformer_service.dart';
-import '../services/cloud_ai_service.dart';
 import '../services/image_processor_service.dart';
 import 'result_screen.dart';
 import 'batch_processing_screen.dart';
@@ -22,6 +24,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isProcessing = false;
   String _processingStep = '';
+  String? _capturedImagePath;
 
   bool get _supportsCamera =>
       !kIsWeb &&
@@ -35,12 +38,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       );
       return;
     }
-    final result = await Navigator.push<XFile>(
+    final result = await Navigator.push<dynamic>(
       context,
       MaterialPageRoute(builder: (_) => const CameraScreen()),
     );
-    if (result != null) {
+    if (result is XFile) {
       _processImage(result);
+    } else if (result is List<XFile> && result.isNotEmpty) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (c) => BatchProcessingScreen(images: result)),
+        );
+      }
     }
   }
 
@@ -74,6 +84,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Future<void> _processImage(XFile xFile) async {
     setState(() {
+      _capturedImagePath = xFile.path;
       _isProcessing = true;
       _processingStep = 'Processing image...';
     });
@@ -86,27 +97,31 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       // Create an XFile from the processed image
       final processedXFile = XFile(processed.processedImagePath);
 
-      // Step 2: OCR + field extraction (Hybrid)
-      setState(() => _processingStep = 'Analyzing with AI...');
+      // Step 2: OCR + field extraction (Groq AI -> On-Device ML Kit OCR Fallback)
+      setState(() => _processingStep = 'Analyzing with Ultra-Fast Groq AI...');
       
       Map<String, dynamic>? result;
-      try {
-        final connectivityResult = await (Connectivity().checkConnectivity());
-        final isOnline = connectivityResult != ConnectivityResult.none;
 
-        if (isOnline) {
-          setState(() => _processingStep = 'Extracting data via Cloud AI...');
-          result = await CloudAIService.extractCard(processedXFile);
+      // Attempt 1: Groq Ultra-Fast AI Vision (< 0.4s)
+      try {
+        result = await GroqService.extractCard(xFile);
+        if (result != null) {
+          debugPrint("ScannerScreen: Successfully extracted data via Groq AI Vision");
         }
       } catch (e) {
-        debugPrint("Connectivity check failed: $e");
+        debugPrint("ScannerScreen: Groq attempt failed: $e");
       }
 
-      // Fallback to local OCR if offline or Cloud AI failed
+      // Attempt 2: Fallback to local offline ML Kit OCR (0.1s on device)
       if (result == null) {
-        setState(() => _processingStep = 'Extracting text locally...');
+        setState(() => _processingStep = 'Extracting text locally (offline)...');
         result = await LocalTransformerService.extractCard(processedXFile);
+        debugPrint("ScannerScreen: Used local transformer OCR fallback");
       }
+
+      final captureTime = DateTime.now().toIso8601String();
+      result['timestamp'] = captureTime;
+      result['created_at'] = captureTime;
 
       // Step 3: Save card image permanently
       setState(() => _processingStep = 'Saving card image...');
@@ -140,8 +155,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFCAF0F8),
       appBar: AppBar(
         title: const Text('Scan Business Card'),
         backgroundColor: Colors.transparent,
@@ -156,35 +172,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   Widget _buildProcessingView(ThemeData theme) {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 80,
-            height: 80,
+            width: 24,
+            height: 24,
             child: CircularProgressIndicator(
-              strokeWidth: 3,
               color: theme.colorScheme.primary,
+              strokeWidth: 2,
             ),
-          )
-              .animate(onPlay: (c) => c.repeat())
-              .shimmer(duration: 1500.ms, color: theme.colorScheme.secondary),
-          const SizedBox(height: 32),
+          ),
+          const SizedBox(height: 16),
           Text(
-            _processingStep,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            'Processing card info...',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
             ),
-          ).animate(onPlay: (c) => c.repeat()).fadeIn(duration: 500.ms).then().fadeOut(duration: 500.ms),
-          const SizedBox(height: 12),
-          Text(
-            'Running on-device AI — no internet needed',
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
           ),
         ],
       ),
     );
   }
-
   Widget _buildOptionsView(ThemeData theme) {
     return SafeArea(
       child: Padding(
@@ -213,17 +221,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                 delay: 0.ms,
                 badge: 'RECOMMENDED',
               ),
-              const SizedBox(height: 16),
-              _buildOptionCard(
-                theme,
-                title: 'Quick Photo',
-                subtitle: 'Take a photo of the card now',
-                icon: Icons.camera_alt_rounded,
-                gradientColors: [const Color(0xFF00695C), const Color(0xFF004D40)],
-                onTap: () => _pickImage(ImageSource.camera),
-                delay: 100.ms,
-              ),
-              const SizedBox(height: 16),
             ],
             _buildOptionCard(
               theme,

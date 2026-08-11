@@ -12,7 +12,7 @@ class ConfigState {
     required this.serverHost,
     required this.serverPort,
     required this.selectedModel,
-    this.isDark = true,
+    this.isDark = false,
   });
 
   ConfigState copyWith({String? serverHost, int? serverPort, String? selectedModel, bool? isDark}) {
@@ -66,7 +66,7 @@ class ConfigNotifier extends StateNotifier<ConfigState> {
           : normalizedHost,
       serverPort: migratedPort,
       selectedModel: prefs.getString('selectedModel') ?? "gemma4:31b-cloud",
-      isDark: prefs.getBool('isDark') ?? true,
+      isDark: prefs.getBool('isDark') ?? false,
     );
 
     if (state.serverHost != normalizedHost) {

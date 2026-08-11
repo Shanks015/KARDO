@@ -1,0 +1,15 @@
+flutter_native_splash:
+  color: "#CAF0F8"
+  color_dark: "#0A0A0A"
+  image: "assets/images/kardo_logo.png"
+  image_dark: "assets/images/kardo_logo.png"
+  
+  # Android 12+ specific settings
+  android_12:
+    color: "#CAF0F8"
+    color_dark: "#0A0A0A"
+    image: "assets/images/kardo_logo.png"
+    image_dark: "assets/images/kardo_logo.png"
+    
+  android: true
+  ios: true

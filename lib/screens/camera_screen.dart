@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:image/image.dart' as img;
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -11,39 +11,19 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen>
-    with TickerProviderStateMixin {
+class _CameraScreenState extends State<CameraScreen> {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
   bool _isInitialized = false;
   bool _isCapturing = false;
-  bool _isStable = false;
-  int _stabilityCount = 0;
-  static const int _stabilityThreshold = 20; // ~2s at 10fps stability checks
 
-  late AnimationController _pulseController;
-  late AnimationController _borderController;
-  late Animation<double> _borderAnimation;
-  Timer? _stabilityTimer;
-  Timer? _autoSnapTimer;
+  bool _isBatchMode = false;
+  bool _isFlashOn = false;
+  final List<XFile> _batchPhotos = [];
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-
-    _borderController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _borderAnimation = CurvedAnimation(
-      parent: _borderController,
-      curve: Curves.easeInOut,
-    );
-
     _initCamera();
   }
 
@@ -79,7 +59,6 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (mounted) {
         setState(() => _isInitialized = true);
-        _startStabilityDetection();
       }
     } catch (e) {
       debugPrint('Camera init error: $e');
@@ -92,38 +71,53 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  void _startStabilityDetection() {
-    _stabilityTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!mounted || _isCapturing) return;
-
-      // Increment stability count — in a real gyroscope impl, this would
-      // check accelerometer delta. Here we simulate with a simple counter.
-      _stabilityCount++;
-
-      if (_stabilityCount >= _stabilityThreshold && !_isStable) {
-        setState(() => _isStable = true);
-        _borderController.forward();
-        // Auto-snap after 1.5 seconds of stability
-        _autoSnapTimer = Timer(const Duration(milliseconds: 1500), () {
-          if (mounted && _isStable && !_isCapturing) {
-            _captureImage();
-          }
-        });
-      }
-    });
-  }
-
   Future<void> _captureImage() async {
     if (_isCapturing || _controller == null || !_controller!.value.isInitialized) return;
 
     setState(() => _isCapturing = true);
-    _stabilityTimer?.cancel();
-    _autoSnapTimer?.cancel();
 
     try {
       final XFile photo = await _controller!.takePicture();
+      
+      // Crop image to the frame
+      try {
+        final bytes = await File(photo.path).readAsBytes();
+        final imageRaw = img.decodeImage(bytes);
+        if (imageRaw != null) {
+          final image = img.bakeOrientation(imageRaw);
+          final imgW = image.width;
+          final imgH = image.height;
+          
+          final cropW = (imgW * 0.88).round();
+          final cropH = (cropW / 1.586).round();
+          final cropX = ((imgW - cropW) / 2).round();
+          final cropY = ((imgH - cropH) / 2 - imgH * 0.04).round();
+          
+          final safeX = cropX.clamp(0, imgW);
+          final safeY = cropY.clamp(0, imgH);
+          final safeW = cropW.clamp(0, imgW - safeX);
+          final safeH = cropH.clamp(0, imgH - safeY);
+          final cropped = img.copyCrop(image, x: safeX, y: safeY, width: safeW, height: safeH);
+          img.Image finalImage = cropped;
+          if (cropped.width > 1200) {
+            finalImage = img.copyResize(cropped, width: 1200);
+          }
+          final croppedBytes = img.encodeJpg(finalImage, quality: 85);
+          await File(photo.path).writeAsBytes(croppedBytes);
+        }
+      } catch (e) {
+        debugPrint('Crop failed: $e');
+      }
+
       if (mounted) {
-        Navigator.pop(context, photo);
+        if (_isBatchMode) {
+          setState(() {
+            _batchPhotos.add(photo);
+            _isCapturing = false;
+          });
+        } else {
+          Navigator.pop(context, photo);
+        }
       }
     } catch (e) {
       debugPrint('Capture error: $e');
@@ -136,101 +130,137 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  Future<void> _toggleFlash() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    try {
+      if (_isFlashOn) {
+        await _controller!.setFlashMode(FlashMode.off);
+        setState(() => _isFlashOn = false);
+      } else {
+        await _controller!.setFlashMode(FlashMode.torch);
+        setState(() => _isFlashOn = true);
+      }
+    } catch (e) {
+      debugPrint('Flash error: $e');
+    }
+  }
+
   @override
   void dispose() {
-    _stabilityTimer?.cancel();
-    _autoSnapTimer?.cancel();
-    _pulseController.dispose();
-    _borderController.dispose();
     _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized || _controller == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Camera preview
-          if (_isInitialized && _controller != null)
-            Positioned.fill(
-              child: CameraPreview(_controller!),
-            )
-          else
-            const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Colors.white),
-                  SizedBox(height: 16),
-                  Text('Starting camera...', style: TextStyle(color: Colors.white)),
-                ],
+          // Camera Preview
+          Positioned.fill(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: size.width,
+                height: size.width * _controller!.value.aspectRatio,
+                child: CameraPreview(_controller!),
               ),
             ),
+          ),
 
           // Dark overlay with card-shaped transparent cutout
           if (_isInitialized)
             Positioned.fill(
               child: CustomPaint(
-                painter: _CardOverlayPainter(
-                  isStable: _isStable,
-                  stabilityProgress: _borderAnimation,
-                  pulseAnimation: _pulseController,
-                ),
+                painter: _CardOverlayPainter(),
               ),
             ),
 
-          // Top bar
+          // Top bar and toggle
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.black45,
-                    ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24),
+                      ),
+                      IconButton(
+                        onPressed: _toggleFlash,
+                        icon: Icon(
+                          _isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ],
                   ),
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _isStable
-                              ? Colors.green.withOpacity(0.3 + 0.4 * _pulseController.value)
-                              : Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _isStable ? Colors.green : Colors.white30,
-                            width: 1.5,
+                ),
+                const SizedBox(height: 16),
+                // Mode Toggle
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => _isBatchMode = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: !_isBatchMode ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            'Single Mode',
+                            style: TextStyle(
+                              color: !_isBatchMode ? const Color(0xFF536DFE) : Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _isStable ? Icons.check_circle : Icons.crop_free,
-                              color: _isStable ? Colors.green : Colors.white,
-                              size: 16,
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _isBatchMode = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _isBatchMode ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            'Batch Mode',
+                            style: TextStyle(
+                              color: _isBatchMode ? const Color(0xFF536DFE) : Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isStable ? 'Ready!' : 'Align card in frame',
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                          ],
+                          ),
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
@@ -247,9 +277,7 @@ class _CameraScreenState extends State<CameraScreen>
                     Text(
                       _isCapturing
                           ? 'Processing...'
-                          : _isStable
-                              ? 'Auto-capturing...'
-                              : 'Position card within the frame',
+                          : 'Position card within the frame',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -258,50 +286,62 @@ class _CameraScreenState extends State<CameraScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    // Shutter button
-                    GestureDetector(
-                      onTap: _isCapturing ? null : _captureImage,
-                      child: AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          return Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _isCapturing
-                                  ? Colors.grey
-                                  : Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(
-                                    _isStable ? 0.4 * _pulseController.value : 0.2,
-                                  ),
-                                  blurRadius: _isStable ? 20 : 10,
-                                  spreadRadius: _isStable ? 8 : 4,
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: _isCapturing ? null : _captureImage,
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 4),
+                                  color: Colors.transparent,
                                 ),
-                              ],
-                            ),
-                            child: _isCapturing
-                                ? const Center(
-                                    child: SizedBox(
-                                      width: 32,
-                                      height: 32,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.black,
-                                        strokeWidth: 3,
-                                      ),
+                                child: Center(
+                                  child: Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: _isCapturing ? Colors.grey : Colors.white,
                                     ),
-                                  )
-                                : const Icon(Icons.camera_alt, color: Colors.black, size: 32),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Tap to capture manually',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                                    child: _isCapturing
+                                        ? const Center(
+                                            child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.black,
+                                                strokeWidth: 2.5,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_isBatchMode && _batchPhotos.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.pop(context, _batchPhotos),
+                              icon: const Icon(Icons.check_circle_rounded),
+                              label: Text('Done (${_batchPhotos.length})'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF536DFE),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -316,16 +356,6 @@ class _CameraScreenState extends State<CameraScreen>
 
 /// Custom painter that draws a semi-transparent overlay with a card-shaped cutout
 class _CardOverlayPainter extends CustomPainter {
-  final bool isStable;
-  final Animation<double> stabilityProgress;
-  final Animation<double> pulseAnimation;
-
-  _CardOverlayPainter({
-    required this.isStable,
-    required this.stabilityProgress,
-    required this.pulseAnimation,
-  }) : super(repaint: Listenable.merge([stabilityProgress, pulseAnimation]));
-
   @override
   void paint(Canvas canvas, Size size) {
     // Card dimensions: standard business card ratio is 85.6mm x 54mm (≈ 1.586:1)
@@ -347,59 +377,26 @@ class _CardOverlayPainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(path, overlayPaint);
 
-    // Card border / corner guides
-    final borderColor = isStable
-        ? Color.lerp(Colors.white54, Colors.greenAccent, stabilityProgress.value)!
-        : Colors.white54;
+    // Clean white border based on the mockup
     final borderPaint = Paint()
-      ..color = borderColor
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isStable ? 2.5 : 2.0;
+      ..strokeWidth = 3.0;
+    
+    // Draw rounded rect border for the card
+    canvas.drawRRect(cardRect, borderPaint);
 
-    // Draw corner brackets
-    const cornerLen = 28.0;
-    final corners = [
-      [cardLeft, cardTop, 1.0, 1.0],   // top-left
-      [cardLeft + cardWidth, cardTop, -1.0, 1.0],  // top-right
-      [cardLeft, cardTop + cardHeight, 1.0, -1.0], // bottom-left
-      [cardLeft + cardWidth, cardTop + cardHeight, -1.0, -1.0], // bottom-right
-    ];
-
-    for (final corner in corners) {
-      final cx = corner[0];
-      final cy = corner[1];
-      final dx = corner[2];
-      final dy = corner[3];
-
-      canvas.drawLine(
-        Offset(cx, cy),
-        Offset(cx + cornerLen * dx, cy),
-        borderPaint,
-      );
-      canvas.drawLine(
-        Offset(cx, cy),
-        Offset(cx, cy + cornerLen * dy),
-        borderPaint,
-      );
-    }
-
-    // Stable glow effect
-    if (isStable && stabilityProgress.value > 0.1) {
-      final glowPaint = Paint()
-        ..color = Colors.greenAccent.withOpacity(0.15 * stabilityProgress.value)
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(cardRect, glowPaint);
-
-      final glowBorderPaint = Paint()
-        ..color = Colors.greenAccent.withOpacity(0.6 * stabilityProgress.value)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-      canvas.drawRRect(cardRect, glowBorderPaint);
-    }
+    // Draw little white corner dots (mockup style)
+    final cornerPaint = Paint()..color = Colors.white;
+    const dotRadius = 4.0;
+    canvas.drawCircle(Offset(cardLeft, cardTop), dotRadius, cornerPaint);
+    canvas.drawCircle(Offset(cardLeft + cardWidth, cardTop), dotRadius, cornerPaint);
+    canvas.drawCircle(Offset(cardLeft, cardTop + cardHeight), dotRadius, cornerPaint);
+    canvas.drawCircle(Offset(cardLeft + cardWidth, cardTop + cardHeight), dotRadius, cornerPaint);
   }
 
   @override
   bool shouldRepaint(covariant _CardOverlayPainter oldDelegate) {
-    return oldDelegate.isStable != isStable;
+    return false;
   }
 }

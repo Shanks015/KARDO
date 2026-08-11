@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
+import '../theme/liquid_glass_theme.dart';
+import '../widgets/ios_components.dart';
+import '../widgets/zoomable_image_viewer.dart';
 import 'contact_detail_screen.dart';
 
 class SheetDataScreen extends ConsumerStatefulWidget {
@@ -17,30 +20,26 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
     with TickerProviderStateMixin {
   String _searchQuery = '';
   String _selectedFilter = 'All';
-  int _viewMode = 0; // 0=List, 1=Carousel, 2=Kanban
-  late TabController _tabController;
+  int _viewMode = 0; // 0=List, 1=Gallery, 2=Kanban
 
-  final List<String> _kanbanColumns = ['New Lead', 'Contacted', 'Followed Up', 'Closed'];
-  final List<String> _filters = ['All', 'UNIVERSITY', 'BUSINESS', 'CONSULTANCY', 'NGO', 'STARTUP', 'GOVERNMENT'];
+  final List<String> _kanbanColumns = [
+    'New Lead', 'Contacted', 'Followed Up', 'Closed'
+  ];
+  final List<String> _filters = [
+    'All', 'UNIVERSITY', 'BUSINESS', 'CONSULTANCY', 'NGO', 'STARTUP', 'GOVERNMENT'
+  ];
 
-  // For carousel
+  // For carousel/gallery view
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _carouselIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() => _viewMode = _tabController.index);
-      }
-    });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -69,7 +68,8 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
           org.contains(_searchQuery.toLowerCase()) ||
           department.contains(_searchQuery.toLowerCase()) ||
           email.contains(_searchQuery.toLowerCase()) ||
-          phone.contains(_searchQuery.toLowerCase());
+          phone.contains(_searchQuery.toLowerCase()) ||
+          type.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final matchesFilter = _selectedFilter == 'All' || type == _selectedFilter;
       return matchesSearch && matchesFilter;
@@ -79,153 +79,137 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dataState = ref.watch(sheetDataProvider);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Column(
-        children: [
-          // ── Header + Search ───────────────────────────────────────────────
-          Container(
-            color: theme.colorScheme.surface,
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'My Contacts',
-                            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => ref.read(localCardsProvider.notifier).loadCards(),
-                          icon: const Icon(Icons.refresh_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: TextField(
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      decoration: InputDecoration(
-                        hintText: 'Search name, company, email...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        filled: true,
-                        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Category filter chips
-                  SizedBox(
-                    height: 36,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _filters.length,
-                      itemBuilder: (_, i) {
-                        final filter = _filters[i];
-                        final isSelected = _selectedFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(filter, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                            selected: isSelected,
-                            onSelected: (_) => setState(() => _selectedFilter = filter),
-                            showCheckmark: false,
-                            selectedColor: theme.colorScheme.primary.withOpacity(0.15),
-                            side: BorderSide(
-                              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // View mode tabs
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.grey,
-                      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      tabs: const [
-                        Tab(icon: Icon(Icons.view_list_rounded, size: 18), text: 'List'),
-                        Tab(icon: Icon(Icons.view_carousel_rounded, size: 18), text: 'Gallery'),
-                        Tab(icon: Icon(Icons.view_kanban_rounded, size: 18), text: 'Board'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Content ───────────────────────────────────────────────────────
-          Expanded(
-            child: dataState.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e', textAlign: TextAlign.center)),
-              data: (rawData) {
-                final cards = rawData
-                    .whereType<Map<String, dynamic>>()
-                    .cast<Map<String, dynamic>>()
-                    .toList();
-                final filtered = _filterCards(cards);
-
-                if (filtered.isEmpty) {
-                  return _buildEmpty(context);
-                }
-
-                return TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildListView(filtered),
-                    _buildCarouselView(filtered),
-                    _buildKanbanView(cards), // Kanban shows all, not filtered
-                  ],
-                );
-              },
-            ),
+      backgroundColor: isDark
+          ? const Color(0xFF0A0A0A)
+          : LiquidGlassTheme.iceBlue,
+      appBar: IOSNavBar(
+        title: 'My Contacts',
+        showBackButton: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () {
+              ref.read(localCardsProvider.notifier).loadCards();
+            },
           ),
         ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Search bar (identical to home screen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: IOSSearchBar(
+                hintText: 'Search name, company, email...',
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            SizedBox(
+              height: 48,
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: _filters.length,
+                itemBuilder: (_, i) {
+                  final filter = _filters[i];
+                  final isSelected = _selectedFilter == filter;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(
+                        filter,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                      ),
+                      selected: isSelected,
+                      onSelected: (_) => setState(() => _selectedFilter = filter),
+                      showCheckmark: false,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                      selectedColor: theme.colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : (isDark ? Colors.grey.shade600 : Colors.grey.shade300),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // View mode segmented control (Responsive List | Gallery | Kanban)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: IOSegmentedControl(
+                segments: const ['List', 'Gallery', 'Kanban'],
+                icons: const [
+                  Icons.view_list_rounded,
+                  Icons.grid_view_rounded,
+                  Icons.view_kanban_outlined,
+                ],
+                selectedIndex: _viewMode,
+                onValueChanged: (index) =>
+                    setState(() => _viewMode = index),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Content area
+            Expanded(
+              child: dataState.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e', textAlign: TextAlign.center)),
+                data: (rawData) {
+                  final cards = rawData
+                      .whereType<Map<String, dynamic>>()
+                      .cast<Map<String, dynamic>>()
+                      .toList();
+                  final filtered = _filterCards(cards);
+
+                  if (filtered.isEmpty) {
+                    return _buildEmpty(context);
+                  }
+
+                  if (_viewMode == 0) {
+                    return _buildListView(filtered, isDark);
+                  } else if (_viewMode == 1) {
+                    return _buildCarouselView(filtered);
+                  } else {
+                    return _buildKanbanView(filtered, isDark);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // ── List View ─────────────────────────────────────────────────────────────
-  Widget _buildListView(List<Map<String, dynamic>> cards) {
+  Widget _buildListView(List<Map<String, dynamic>> cards, bool isDark) {
     return RefreshIndicator(
       onRefresh: () => ref.read(localCardsProvider.notifier).loadCards(),
       child: ListView.builder(
@@ -249,95 +233,122 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
             ),
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(18),
-                border: Border(left: BorderSide(color: color, width: 4)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+              child: GlassmorphismContainer.fromTheme(
+                context,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: color, width: 4)),
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Thumbnail
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomLeft: Radius.circular(14),
-                    ),
-                    child: SizedBox(
-                      width: 72,
-                      height: 88,
-                      child: imagePath.isNotEmpty && File(imagePath).existsSync()
-                          ? Image.file(File(imagePath), fit: BoxFit.cover)
-                          : Container(
-                              color: color.withOpacity(0.15),
-                              child: Center(
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
-                                ),
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Info
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                  child: Row(
+                    children: [
+                      // Thumbnail (Tap to zoom in/out)
+                      GestureDetector(
+                        onTap: () {
+                          if (imagePath.isNotEmpty && File(imagePath).existsSync()) {
+                            showZoomableImageViewer(context, imagePath: imagePath, title: name);
+                          }
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 72,
+                            height: 88,
+                            child: imagePath.isNotEmpty && File(imagePath).existsSync()
+                                ? Stack(
+                                    children: [
+                                      Positioned.fill(
+                                        child: Image.file(File(imagePath), fit: BoxFit.cover),
+                                      ),
+                                      Positioned(
+                                        right: 4,
+                                        bottom: 4,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.6),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.zoom_in_rounded,
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Container(
+                                    color: color.withOpacity(0.15),
+                                    child: Center(
+                                      child: Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Info
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  name.isEmpty ? 'Unknown' : name,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name.isEmpty ? 'Unknown' : name,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text('#$slNo', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
                               ),
-                              Text('#$slNo', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                              if (role.isNotEmpty)
+                                Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              if (org.isNotEmpty)
+                                Row(children: [
+                                  Icon(Icons.business, size: 12, color: color),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text(org, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                                ]),
+                              const SizedBox(height: 4),
+                              if (phone.isNotEmpty)
+                                Row(children: [
+                                  const Icon(Icons.phone, size: 12, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text(phone, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                                ]),
+                              if (email.isNotEmpty)
+                                Row(children: [
+                                  const Icon(Icons.email, size: 12, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text(email, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                                ]),
                             ],
                           ),
-                          if (role.isNotEmpty)
-                            Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 4),
-                          if (org.isNotEmpty)
-                            Row(children: [
-                              Icon(Icons.business, size: 12, color: color),
-                              const SizedBox(width: 4),
-                              Expanded(child: Text(org, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                            ]),
-                          const SizedBox(height: 4),
-                          if (phone.isNotEmpty)
-                            Row(children: [
-                              const Icon(Icons.phone, size: 12, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Expanded(child: Text(phone, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
-                            ]),
-                          if (email.isNotEmpty)
-                            Row(children: [
-                              const Icon(Icons.email, size: 12, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Expanded(child: Text(email, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
-                            ]),
-                        ],
+                        ),
                       ),
-                    ),
+                      const Padding(
+                        padding: EdgeInsets.only(right: 12),
+                        child: Icon(Icons.chevron_right, color: Colors.grey),
+                      ),
+                    ],
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: Icon(Icons.chevron_right, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: Duration(milliseconds: 40 * index), duration: 300.ms).slideX(begin: 0.05),
+                ),
+              ).animate().fadeIn(delay: Duration(milliseconds: 40 * index), duration: 300.ms).slideX(begin: 0.05),
+            ),
           );
         },
       ),
@@ -414,20 +425,62 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                               ),
                             ),
                           ),
-                          // Text overlay
+                          // Top-right Zoom Button & Tap gesture
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: IconButton(
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 20),
+                              ),
+                              onPressed: () {
+                                if (imagePath.isNotEmpty && File(imagePath).existsSync()) {
+                                  showZoomableImageViewer(context, imagePath: imagePath, title: name);
+                                }
+                              },
+                              tooltip: 'Zoom Image',
+                            ),
+                          ),
+                          // Text overlay (Tap to open details)
                           Positioned(
                             bottom: 24,
                             left: 24,
                             right: 24,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(name.isEmpty ? 'Unknown' : name,
-                                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                                if (role.isNotEmpty)
-                                  Text(role, style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14)),
-                                if (org.isNotEmpty)
-                                  Text(org, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(name.isEmpty ? 'Unknown' : name,
+                                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                                      if (role.isNotEmpty)
+                                        Text(role, style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14)),
+                                      if (org.isNotEmpty)
+                                        Text(org, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                                  ),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => ContactDetailScreen(card: card)),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -464,7 +517,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   }
 
   // ── Kanban Board View ─────────────────────────────────────────────────────
-  Widget _buildKanbanView(List<Map<String, dynamic>> allCards) {
+  Widget _buildKanbanView(List<Map<String, dynamic>> allCards, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -475,13 +528,13 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
               .where((c) => (c['kanban_status'] ?? 'New Lead') == column)
               .toList();
 
-          return _buildKanbanColumn(column, columnCards);
+          return _buildKanbanColumn(column, columnCards, isDark);
         }).toList(),
       ),
     );
   }
 
-  Widget _buildKanbanColumn(String title, List<Map<String, dynamic>> cards) {
+  Widget _buildKanbanColumn(String title, List<Map<String, dynamic>> cards, bool isDark) {
     final theme = Theme.of(context);
     final columnColors = {
       'New Lead': const Color(0xFF5E35B1),
@@ -544,10 +597,9 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                   ),
                 ),
                 child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
                   child: Column(
                     children: [
-                      ...cards.map((card) => _buildKanbanCard(card, color)),
+                      ...cards.map((card) => _buildKanbanCard(card, color, isDark)),
                       if (cards.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(20),
@@ -568,7 +620,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
     );
   }
 
-  Widget _buildKanbanCard(Map<String, dynamic> card, Color columnColor) {
+  Widget _buildKanbanCard(Map<String, dynamic> card, Color columnColor, bool isDark) {
     final color = _cardColor(card);
     final name = _getField(card, 'point_person');
     final org = _getField(card, 'organization_name');
@@ -588,30 +640,30 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: color, width: 1.5),
             ),
-            child: Text(name.isEmpty ? 'Card' : name, style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(name.isEmpty ? 'Card' : name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
           ),
         ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
-        child: _buildKanbanCardContent(card, color, name, org, phone),
+        child: _buildKanbanCardContent(card, color, name, org, phone, isDark),
       ),
       child: GestureDetector(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => ContactDetailScreen(card: card)),
         ),
-        child: _buildKanbanCardContent(card, color, name, org, phone),
+        child: _buildKanbanCardContent(card, color, name, org, phone, isDark),
       ),
     );
   }
 
-  Widget _buildKanbanCardContent(Map<String, dynamic> card, Color color, String name, String org, String phone) {
+  Widget _buildKanbanCardContent(Map<String, dynamic> card, Color color, String name, String org, String phone, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? Colors.grey.shade900 : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border(left: BorderSide(color: color, width: 3)),
         boxShadow: [
@@ -621,7 +673,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name.isEmpty ? 'Unknown' : name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+          Text(name.isEmpty ? 'Unknown' : name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black), overflow: TextOverflow.ellipsis),
           if (org.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(org, style: TextStyle(fontSize: 11, color: color), overflow: TextOverflow.ellipsis),

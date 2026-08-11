@@ -157,6 +157,34 @@ class ImageProcessorService {
     }
   }
 
+  /// Save a heavily compressed, low-quality version of the card image
+  static Future<String> saveLowQualityCardImage(String tempPath) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final cardsDir = Directory(p.join(dir.path, 'cards'));
+      if (!await cardsDir.exists()) await cardsDir.create(recursive: true);
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final destPath = p.join(cardsDir.path, 'card_lq_$timestamp.jpg');
+      
+      final bytes = await File(tempPath).readAsBytes();
+      final original = img.decodeImage(bytes);
+      if (original != null) {
+        // Resize to a max width of 400 for extreme space saving
+        final resized = img.copyResize(original, width: 400);
+        // Encode with very low quality (20)
+        final compressedBytes = img.encodeJpg(resized, quality: 20);
+        await File(destPath).writeAsBytes(compressedBytes);
+        return destPath;
+      }
+      
+      return tempPath;
+    } catch (e) {
+      debugPrint('Error saving low quality card image: $e');
+      return tempPath;
+    }
+  }
+
   /// Convert Color to hex string for storage
   static String colorToHex(Color color) {
     return '0x${color.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';

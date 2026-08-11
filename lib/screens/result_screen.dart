@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
 
@@ -34,8 +35,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   static const List<String> _kanbanOptions = ['New Lead', 'Contacted', 'Followed Up', 'Closed'];
   static const List<String> _tagOptions = [
-    'BUSINESS', 'STARTUP', 'UNIVERSITY', 'CONSULTANCY', 'NGO', 'GOVERNMENT', 'HEALTHCARE', 'FINANCE', 'TECHNOLOGY'
+    'BUSINESS', 'STARTUP', 'UNIVERSITY', 'CONSULTANCY', 'NGO', 'GOVERNMENT', 'HEALTHCARE', 'FINANCE', 'TECHNOLOGY', 'TECH', 'OTHER'
   ];
+
+  String _getFormattedCapturedDateTime() {
+    final raw = widget.extractedData['timestamp']?.toString() ?? widget.extractedData['created_at']?.toString() ?? '';
+    if (raw.isEmpty) {
+      return DateFormat('MMM dd, yyyy • h:mm a').format(DateTime.now());
+    }
+    try {
+      final dt = DateTime.parse(raw);
+      return DateFormat('MMM dd, yyyy • h:mm a').format(dt.toLocal());
+    } catch (_) {
+      return raw;
+    }
+  }
 
   static const Map<String, String> _fieldLabels = {
     'point_person': 'Full Name',
@@ -51,20 +65,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   static const Map<String, IconData> _fieldIcons = {
     'point_person': Icons.person_rounded,
-    'department': Icons.work_rounded,
+    'department': Icons.work_outline_rounded,
     'organization_name': Icons.business_rounded,
-    'contact_number': Icons.phone_rounded,
-    'contact_email': Icons.email_rounded,
+    'contact_number': Icons.phone_outlined,
+    'contact_email': Icons.email_outlined,
     'url': Icons.language_rounded,
-    'location': Icons.location_on_rounded,
-    'address': Icons.home_rounded,
+    'location': Icons.location_on_outlined,
+    'address': Icons.home_outlined,
     'notes': Icons.notes_rounded,
   };
 
   @override
   void initState() {
     super.initState();
-    _selectedTag = widget.extractedData['organization_type']?.toString() ?? 'BUSINESS';
+    var rawTag = widget.extractedData['organization_type']?.toString().toUpperCase().trim() ?? 'BUSINESS';
+    if (rawTag == 'TECH') rawTag = 'TECHNOLOGY';
+    if (rawTag == 'GOVT') rawTag = 'GOVERNMENT';
+    if (rawTag == 'EDU') rawTag = 'UNIVERSITY';
+    _selectedTag = _tagOptions.contains(rawTag) ? rawTag : 'BUSINESS';
     _kanbanStatus = 'New Lead';
 
     for (final key in _fieldLabels.keys) {
@@ -72,9 +90,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (value.toLowerCase() == 'not found') value = '';
       _controllers[key] = TextEditingController(text: value);
     }
-
-    // Show warning after a short delay
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkMissingFields());
   }
 
   void _checkMissingFields() {
@@ -132,6 +147,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       finalData['dominant_color'] = ImageProcessorService.colorToHex(widget.dominantColor);
       finalData['dominant_color_secondary'] = ImageProcessorService.colorToHex(widget.dominantColorSecondary);
 
+      final captureIso = widget.extractedData['timestamp'] ?? widget.extractedData['created_at'] ?? DateTime.now().toIso8601String();
+      finalData['timestamp'] = captureIso;
+      finalData['created_at'] = captureIso;
+
       // Duplicate check
       final duplicate = await ref.read(localDbServiceProvider).checkDuplicate(finalData);
       if (duplicate != null && mounted) {
@@ -164,13 +183,36 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       final slNo = await ref.read(localCardsProvider.notifier).addCard(finalData);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Saved as card #$slNo'),
-            backgroundColor: Colors.green.shade700,
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 28),
+                const SizedBox(width: 10),
+                const Text('Card Saved', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text("Business card for '$person' has been successfully saved to your library as card #$slNo."),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF536DFE),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                child: const Text('Great!'),
+              ),
+            ],
           ),
         );
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -186,202 +228,157 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final topColor = widget.dominantColor;
-    final botColor = widget.dominantColorSecondary;
-
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leadingWidth: 140,
+        leading: TextButton.icon(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: Color(0xFF536DFE)),
+          label: const Text('New Contact', style: TextStyle(color: Color(0xFF536DFE), fontSize: 13, fontWeight: FontWeight.w600)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          // ── TOP HALF: Card Image Preview ──────────────────────────────────
           Expanded(
-            flex: 40,
-            child: Stack(
-              fit: StackFit.expand,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               children: [
-                // Gradient background
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [topColor, botColor],
-                    ),
-                  ),
-                ),
-                // Card image
-                Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      MediaQuery.of(context).padding.top + 52,
-                      24,
-                      16,
+                // Top section: Beautiful Card Preview
+                Center(
+                  child: Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: File(widget.savedImagePath).existsSync()
-                          ? Image.file(
-                              File(widget.savedImagePath),
-                              fit: BoxFit.contain,
-                            )
-                          : Image.file(
-                              File(widget.xFile.path),
-                              fit: BoxFit.contain,
-                            ),
+                          ? Image.file(File(widget.savedImagePath), fit: BoxFit.cover)
+                          : Image.file(File(widget.xFile.path), fit: BoxFit.cover),
                     ),
                   ),
                 ),
-                // Safe area top bar
-                Positioned(
-                  top: MediaQuery.of(context).padding.top,
-                  left: 0,
-                  right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF536DFE).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF536DFE).withOpacity(0.2)),
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                        ),
+                        const Icon(Icons.access_time_filled_rounded, size: 14, color: Color(0xFF536DFE)),
+                        const SizedBox(width: 6),
                         Text(
-                          'Verify & Save',
+                          'Captured On: ${_getFormattedCapturedDateTime()}',
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF536DFE),
                           ),
                         ),
-                        _isSaving
-                            ? const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                ),
-                              )
-                            : TextButton.icon(
-                                onPressed: _saveCard,
-                                icon: const Icon(Icons.save_rounded, color: Colors.white, size: 18),
-                                label: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+                const SizedBox(height: 24),
 
-          // ── BOTTOM HALF: Editable Fields ──────────────────────────────────
-          Expanded(
-            flex: 60,
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-                children: [
-                  // Category tag + Kanban row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdown(
-                          label: 'Category',
-                          value: _selectedTag,
-                          items: _tagOptions,
-                          onChanged: (v) => setState(() => _selectedTag = v!),
-                          icon: Icons.label_rounded,
-                          color: topColor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdown(
-                          label: 'Lead Status',
-                          value: _kanbanStatus,
-                          items: _kanbanOptions,
-                          onChanged: (v) => setState(() => _kanbanStatus = v!),
-                          icon: Icons.view_kanban_rounded,
-                          color: topColor,
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 16),
-
-                  // Editable fields
-                  ..._fieldLabels.entries.mapIndexed((index, entry) {
-                    final key = entry.key;
-                    final label = entry.value;
-                    final icon = _fieldIcons[key] ?? Icons.text_fields;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: TextFormField(
-                        controller: _controllers[key],
-                        keyboardType: key == 'contact_number'
-                            ? TextInputType.phone
-                            : key == 'contact_email'
-                                ? TextInputType.emailAddress
-                                : key == 'url'
-                                    ? TextInputType.url
-                                    : TextInputType.multiline,
-                        maxLines: key == 'address' || key == 'notes' ? 2 : 1,
-                        decoration: InputDecoration(
-                          labelText: label,
-                          prefixIcon: Icon(icon, color: topColor, size: 20),
-                          filled: true,
-                          fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.4),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: topColor, width: 1.5),
-                          ),
-                          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                    ).animate()
-                      .fadeIn(delay: Duration(milliseconds: 60 * index), duration: 300.ms)
-                      .slideY(begin: 0.1, duration: 300.ms);
-                  }).toList(),
-
-                  const SizedBox(height: 8),
-
-                  // Save button
-                  FilledButton.icon(
-                    onPressed: _isSaving ? null : _saveCard,
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 18, height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: Text(_isSaving ? 'Saving...' : 'Save Contact'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: topColor,
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                // Inline Warning Banner if fields are missing
+                if (_controllers['point_person']?.text.trim().isEmpty == true ||
+                    _controllers['organization_name']?.text.trim().isEmpty == true) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50.withOpacity(isDark ? 0.15 : 0.8),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.orange.shade300, width: 1),
                     ),
-                  ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'AI detected some missing details (Name or Company). Please review and fill them in manually.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.orange.shade200 : Colors.orange.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
-              ),
+
+                // Personal section
+                _buildSectionTitle('Personal'),
+                _buildFieldGroup([
+                  _buildTextField('point_person', 'Full Name'),
+                  _buildTextField('contact_email', 'Email Address'),
+                  _buildTextField('contact_number', 'Phone Number'),
+                ]),
+                const SizedBox(height: 24),
+
+                // Work section
+                _buildSectionTitle('Work'),
+                _buildFieldGroup([
+                  _buildTextField('department', 'Job Title / Role'),
+                  _buildTextField('organization_name', 'Company'),
+                  _buildTextField('url', 'Website'),
+                ]),
+                const SizedBox(height: 24),
+
+                // Settings section (mimicking mockup style)
+                _buildSectionTitle('Settings'),
+                _buildFieldGroup([
+                  _buildDropdownField('Category', _selectedTag, _tagOptions, (v) => setState(() => _selectedTag = v!)),
+                  _buildDropdownField('Lead Status', _kanbanStatus, _kanbanOptions, (v) => setState(() => _kanbanStatus = v!)),
+                  _buildTextField('location', 'Address', maxLines: 2),
+                ]),
+                const SizedBox(height: 32),
+
+                // Save Button inside ListView
+                FilledButton(
+                  onPressed: _isSaving ? null : _saveCard,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF536DFE),
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Save to contacts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 48), // Padding at the bottom
+              ],
             ),
           ),
         ],
@@ -389,48 +386,85 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required void Function(String?) onChanged,
-    required IconData icon,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(14),
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade500),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: Icon(Icons.expand_more, color: color, size: 18),
-          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
-              .toList(),
-          onChanged: onChanged,
-          hint: Row(
+    );
+  }
+
+  Widget _buildFieldGroup(List<Widget> children) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: children.asMap().entries.map((e) {
+          final isLast = e.key == children.length - 1;
+          return Column(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              e.value,
+              if (!isLast) Divider(height: 1, indent: 48, color: isDark ? Colors.grey.shade800 : const Color(0xFFF0F0F0)),
             ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String key, String placeholder, {int maxLines = 1}) {
+    return TextFormField(
+      controller: _controllers[key],
+      keyboardType: key == 'contact_number' ? TextInputType.phone : TextInputType.text,
+      maxLines: maxLines,
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        hintText: placeholder,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal),
+        prefixIcon: Icon(_fieldIcons[key], color: Colors.grey.shade400, size: 20),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, String value, List<String> items, void Function(String?) onChanged) {
+    final effectiveItems = items.contains(value) ? items : [...items, value];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.label_outline_rounded, color: Colors.grey.shade400, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                icon: Icon(Icons.expand_more, color: Colors.grey.shade400, size: 20),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87, 
+                  fontSize: 15, 
+                  fontWeight: FontWeight.w500
+                ),
+                items: effectiveItems.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: onChanged,
+              ),
+            ),
           ),
-          selectedItemBuilder: (ctx) => items.map((e) => Align(
-            alignment: Alignment.centerLeft,
-            child: Text(e, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-          )).toList(),
-        ),
+        ],
       ),
     );
   }
 }
-
 extension _IndexedMap<T> on Iterable<T> {
   Iterable<R> mapIndexed<R>(R Function(int index, T element) f) sync* {
     int i = 0;
