@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/nfc_service.dart';
 import '../services/image_processor_service.dart';
+import '../theme/tokens.dart';
 
 class QrShareScreen extends StatefulWidget {
   final Map<String, dynamic> card;
@@ -60,14 +61,16 @@ class _QrShareScreenState extends State<QrShareScreen> {
       setState(() => _savedPath = path);
 
       if (mounted) {
+        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('QR code saved!'), backgroundColor: Colors.green),
+          SnackBar(content: const Text('QR code saved!'), backgroundColor: t.success),
         );
       }
     } catch (e) {
       if (mounted) {
+        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: t.error),
         );
       }
     } finally {
@@ -86,8 +89,9 @@ class _QrShareScreenState extends State<QrShareScreen> {
       );
     } catch (e) {
       if (mounted) {
+        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Share failed: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Share failed: $e'), backgroundColor: t.error),
         );
       }
     }
@@ -98,8 +102,9 @@ class _QrShareScreenState extends State<QrShareScreen> {
       await Share.share(_vcardData, subject: 'Contact: ${_getField("point_person")}');
     } catch (e) {
       if (mounted) {
+        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Share failed: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Share failed: $e'), backgroundColor: t.error),
         );
       }
     }
@@ -108,6 +113,7 @@ class _QrShareScreenState extends State<QrShareScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = theme.extension<KardoTokensExtension>()!.tokens;
     final name = _getField('point_person');
     final org = _getField('organization_name');
     final role = _getField('department');
@@ -128,7 +134,6 @@ class _QrShareScreenState extends State<QrShareScreen> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                // Gradient header
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -154,7 +159,6 @@ class _QrShareScreenState extends State<QrShareScreen> {
 
                 const SizedBox(height: 32),
 
-                // QR Code
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Column(
@@ -166,7 +170,7 @@ class _QrShareScreenState extends State<QrShareScreen> {
                       const SizedBox(height: 6),
                       Text(
                         'Contains vCard 3.0 — works with any camera app',
-                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        style: theme.textTheme.bodySmall?.copyWith(color: t.grey),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -279,12 +283,13 @@ class _QrShareScreenState extends State<QrShareScreen> {
     required Color color,
     VoidCallback? onTap,
   }) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: onTap == null ? Colors.grey : color,
+          color: onTap == null ? t.grey : color,
           borderRadius: BorderRadius.circular(12),
           boxShadow: onTap == null
               ? []

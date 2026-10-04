@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/google_drive_service.dart';
-import 'home_screen.dart';
+import '../theme/tokens.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,26 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await FirebaseAuth.instance.signInWithCredential(credential);
 
-      // Auto-restore logic on first login
-      final prefs = await SharedPreferences.getInstance();
-      final hasRestored = prefs.getBool('has_restored') ?? false;
-
-      if (!hasRestored) {
-        setState(() => _loadingMessage = "Checking for backups...");
-        final lastBackup = await GoogleDriveService.getLastBackupDateFromDrive();
-        if (lastBackup != null) {
-          setState(() => _loadingMessage = "Restoring your cards...");
-          await GoogleDriveService.restoreFromDrive();
-        }
-        await prefs.setBool('has_restored', true);
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+      // No navigation here on purpose: main.dart's StreamBuilder on
+      // authStateChanges swaps LoginScreen for HomeScreen. A manual
+      // pushReplacement raced the stream and could stack a second
+      // HomeScreen, leaving a stale screen above LoginScreen after
+      // sign-out (looked like random forced re-logins).
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,8 +63,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8), // Ice blue background
+      backgroundColor: t.scaffoldBackground,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -100,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -1.0,
-                  color: const Color(0xFF111111),
+                  color: t.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -109,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 16,
-                  color: Colors.grey.shade600,
+                  color: t.textSecondary,
                 ),
               ),
               const Spacer(),
@@ -119,15 +105,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    Text(_loadingMessage, style: TextStyle(color: Colors.grey.shade600)),
+                    Text(_loadingMessage, style: TextStyle(color: t.textSecondary)),
                   ],
                 )
               else
                 ElevatedButton(
                   onPressed: _signInWithGoogle,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF536DFE), // Signature blue from the UI
-                    foregroundColor: Colors.white,
+                    backgroundColor: t.accent,
+                    foregroundColor: t.textOnAccent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),

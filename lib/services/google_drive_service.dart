@@ -26,41 +26,72 @@ class GoogleAuthClient extends http.BaseClient {
 
 class GoogleDriveService {
   static const String _backupFileName = 'kardo_backup.zip';
-  
-  // We use driveAppdataScope to store backups silently in the user's hidden App Data folder
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+
+  /// Last failure reason, surfaced to the UI so "it didn't work" tells us why.
+  static String? lastError;
+
+  // Auth-only GoogleSignIn (no restricted scopes)
+  static final GoogleSignIn _googleSignInAuth = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: '754250458332-olj550qt0kfgf97tg6bufptet7ll8233.apps.googleusercontent.com',
+    forceCodeForRefreshToken: false,
+  );
+
+  // Drive-scoped GoogleSignIn (for backup/restore only)
+  static final GoogleSignIn _googleSignInDrive = GoogleSignIn(
     scopes: [drive.DriveApi.driveAppdataScope],
+    serverClientId: '754250458332-olj550qt0kfgf97tg6bufptet7ll8233.apps.googleusercontent.com',
   );
 
   /// Authenticate with Google (shows consent if not signed in)
   static Future<GoogleSignInAccount?> signIn() async {
+    lastError = null;
     try {
-      final account = await _googleSignIn.signIn();
+      final account = await _googleSignInAuth.signIn();
+      if (account == null) lastError = 'Sign-in was cancelled.';
       return account;
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
+      lastError = e.toString();
       return null;
     }
   }
 
   /// Sign out
   static Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    await _googleSignInAuth.signOut();
+    await _googleSignInDrive.signOut();
   }
 
   /// Check if user is currently signed in
   static Future<GoogleSignInAccount?> getCurrentUser() async {
-    if (await _googleSignIn.isSignedIn()) {
-      return _googleSignIn.signInSilently();
+    if (await _googleSignInAuth.isSignedIn()) {
+      return _googleSignInAuth.signInSilently();
     }
     return null;
   }
 
   /// Returns an authenticated DriveApi instance
   static Future<drive.DriveApi?> _getDriveApi() async {
-    final account = await getCurrentUser();
-    if (account == null) return null;
-
+    // Need drive-scoped account for Drive API access
+    final account = await _googleSignInDrive.signInSilently();
+    if (account == null) {
+      // Try silent sign-in with drive scope
+      try {
+        final newAccount = await _googleSignInDrive.signIn();
+        if (newAccount == null) {
+          lastError ??= 'Google Drive permission was declined.';
+          return null;
+        }
+        final headers = await newAccount.authHeaders;
+        final client = GoogleAuthClient(headers);
+        return drive.DriveApi(client);
+      } catch (e) {
+        debugPrint('Drive sign-in error: $e');
+        lastError = e.toString();
+        return null;
+      }
+    }
     final headers = await account.authHeaders;
     final client = GoogleAuthClient(headers);
     return drive.DriveApi(client);
@@ -82,15 +113,6 @@ class GoogleDriveService {
       encoder.addFile(dbFile);
     }
 
-    // Backup the encryption key securely
-    const storage = FlutterSecureStorage();
-    final key = await storage.read(key: 'db_encryption_key');
-    if (key != null) {
-      final keyFile = File(p.join(tempDir.path, 'encryption_key.txt'));
-      await keyFile.writeAsString(key);
-      encoder.addFile(keyFile);
-    }
-
     // Add cards directory (images)
     final appDir = await getApplicationDocumentsDirectory();
     final cardsDir = Directory(p.join(appDir.path, 'cards'));
@@ -104,9 +126,13 @@ class GoogleDriveService {
 
   /// Uploads the zip backup to Google Drive App Data folder
   static Future<bool> backupToDrive() async {
+    lastError = null;
     try {
       final api = await _getDriveApi();
-      if (api == null) throw Exception('Not authenticated');
+      if (api == null) {
+        lastError ??= 'Not authenticated with Google Drive.';
+        throw Exception('Not authenticated');
+      }
 
       final zipFile = await _createBackupZip();
       if (!zipFile.existsSync()) throw Exception('Backup zip creation failed');
@@ -136,15 +162,20 @@ class GoogleDriveService {
       return true;
     } catch (e) {
       debugPrint('Backup Error: $e');
+      lastError ??= e.toString();
       return false;
     }
   }
 
   /// Downloads the backup from Google Drive and restores DB + images
   static Future<bool> restoreFromDrive() async {
+    lastError = null;
     try {
       final api = await _getDriveApi();
-      if (api == null) throw Exception('Not authenticated');
+      if (api == null) {
+        lastError ??= 'Not authenticated with Google Drive.';
+        throw Exception('Not authenticated');
+      }
 
       final query = "name = '$_backupFileName' and 'appDataFolder' in parents";
       final fileList = await api.files.list(q: query, spaces: 'appDataFolder');
@@ -217,6 +248,7 @@ class GoogleDriveService {
       return true;
     } catch (e) {
       debugPrint('Restore Error: $e');
+      lastError ??= e.toString();
       return false;
     }
   }

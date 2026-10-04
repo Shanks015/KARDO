@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/local_db_service.dart';
+import '../theme/tokens.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -18,6 +19,7 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildInsightsView(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Stack(
       children: [
         Container(
@@ -26,8 +28,8 @@ class InsightsScreen extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Theme.of(context).colorScheme.surface,
-                Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+                t.cardBackground,
+                t.accentLight,
               ],
             ),
           ),
@@ -121,10 +123,11 @@ class InsightsScreen extends ConsumerWidget {
 
   Widget _buildStatCard(BuildContext context, String value, String label,
       IconData icon, Color color) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+        color: t.surfaceBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: color.withOpacity(0.3),
@@ -155,6 +158,7 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildOrganizationTypeBreakdown(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Consumer(
       builder: (context, ref, child) {
         final localCardsState =
@@ -219,9 +223,7 @@ class InsightsScreen extends ConsumerWidget {
                             value: entry.value /
                                 insights['totalCards'],
                             minHeight: 8,
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .surfaceVariant,
+                            backgroundColor: t.surfaceBackground,
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(
                               _getColorForOrgType(entry.key),
@@ -244,6 +246,7 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildTopOrganizations(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Consumer(
       builder: (context, ref, child) {
         final localCardsState =
@@ -323,13 +326,11 @@ class InsightsScreen extends ConsumerWidget {
                                 borderRadius:
                                     BorderRadius.circular(4),
                                 child:
-                                    LinearProgressIndicator(
-                                  value: percentage / 100,
-                                  minHeight: 6,
-                                  backgroundColor:
-                                      Theme.of(context)
-                                          .colorScheme
-                                          .surfaceVariant,
+                                  LinearProgressIndicator(
+                                   value: percentage / 100,
+                                   minHeight: 6,
+                                   backgroundColor:
+                                       t.surfaceBackground,
                                   valueColor:
                                       AlwaysStoppedAnimation<
                                           Color>(
@@ -366,6 +367,7 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildDepartmentBreakdown(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Consumer(
       builder: (context, ref, child) {
         final localCardsState =
@@ -410,16 +412,10 @@ class InsightsScreen extends ConsumerWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withOpacity(0.5),
+                        color: t.accentLight,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.3),
+                          color: t.accent.withOpacity(0.3),
                         ),
                       ),
                       child: Row(
@@ -441,9 +437,7 @@ class InsightsScreen extends ConsumerWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary,
+                              color: t.accent,
                               borderRadius:
                                   BorderRadius.circular(12),
                             ),
@@ -473,6 +467,7 @@ class InsightsScreen extends ConsumerWidget {
   }
 
   Widget _buildContactCompletenessCard(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Consumer(
       builder: (context, ref, child) {
         final localCardsState =
@@ -498,13 +493,10 @@ class InsightsScreen extends ConsumerWidget {
             return Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceVariant
-                    .withOpacity(0.5),
+                color: t.surfaceBackground,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.orangeAccent.withOpacity(0.3),
+                  color: t.warning.withOpacity(0.3),
                   width: 2,
                 ),
               ),
@@ -560,6 +552,7 @@ class InsightsScreen extends ConsumerWidget {
 
   Widget _buildCircularStat(BuildContext context, int value, int total,
       String label, Color color) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final percentage = (value / total * 100).toStringAsFixed(1);
     return Column(
       children: [
@@ -575,10 +568,7 @@ class InsightsScreen extends ConsumerWidget {
                 child: CircularProgressIndicator(
                   value: value / total,
                   strokeWidth: 8,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .surface
-                      .withOpacity(0.5),
+                  backgroundColor: t.surfaceBackground,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     color,
                   ),

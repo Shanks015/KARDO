@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/export_service.dart';
 import '../services/local_db_service.dart';
 import '../theme/liquid_glass_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_file/open_file.dart';
@@ -33,11 +34,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0A0A0A) // Near black for dark mode
-          : LiquidGlassTheme.iceBlue,
+      backgroundColor: t.scaffoldBackground,
       appBar: IOSNavBar(
         title: _isSingleCard ? 'Export Card' : 'Export All Cards',
         showBackButton: true,
@@ -47,6 +47,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   Widget _buildBody(BuildContext context, ThemeData theme, bool isDark) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
@@ -59,7 +60,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black,
+                color: t.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
@@ -69,9 +70,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   : 'Download all saved cards in multiple formats',
               style: TextStyle(
                 fontSize: 16,
-                color: isDark
-                    ? Colors.grey.shade400
-                    : Colors.grey.shade600,
+                color: t.textSecondary,
               ),
             ),
 
@@ -84,9 +83,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
+                  color: t.textSecondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -101,7 +98,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     final isSelected = _selectedFilter == filter;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
+                      child:                       FilterChip(
                         label: Text(
                           filter,
                           style: TextStyle(
@@ -118,12 +115,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                        selectedColor: theme.colorScheme.primary,
+                        selectedColor: t.accent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
                             color: isSelected
-                                ? theme.colorScheme.primary
+                                ? t.accent
                                 : (isDark ? Colors.grey.shade600 : Colors.grey.shade300),
                             width: 1,
                           ),
@@ -140,9 +137,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
+                  color: t.textSecondary,
                 ),
               ),
               const SizedBox(height: 14),
@@ -155,9 +150,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
+                  color: t.textSecondary,
                 ),
               ),
               const SizedBox(height: 14),
@@ -248,21 +241,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required VoidCallback onTap,
     bool visible = true}) {
     if (!visible) return const SizedBox.shrink();
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     return GestureDetector(
       onTap: isLoading ? null : onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.grey.shade800
-              : Colors.white,
+          color: t.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isPrimary
-                ? theme.colorScheme.primary
-                : (isDark
-                    ? Colors.grey.shade400
-                    : Colors.grey.shade300),
+                ? t.accent
+                : t.borderDefault,
             width: isPrimary ? 1.5 : 1,
           ),
         ),
@@ -273,10 +263,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               Icon(
                 icon,
                 color: isPrimary
-                    ? theme.colorScheme.primary
+                    ? t.accent
                     : (isDark
                         ? Colors.white
-                        : theme.colorScheme.primary),
+                        : t.accent),
                 size: 24,
               ),
               const SizedBox(width: 16),
@@ -289,9 +279,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
+                        color: t.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -299,9 +287,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       subtitle,
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade600,
+                        color: t.textSecondary,
                         height: 1.4,
                       ),
                     ),
@@ -321,9 +307,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               else
                 Icon(
                   Icons.chevron_right,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
+                  color: t.textSecondary,
                   size: 20,
                 ),
             ],
@@ -335,18 +319,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   Widget _buildInfoBox(
       BuildContext context, ThemeData theme, bool isDark) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey.shade800
-            : theme.colorScheme.primaryContainer
-                .withOpacity(0.3),
+        color: t.accentLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark
-              ? Colors.grey.shade400
-              : theme.colorScheme.primary.withOpacity(0.2),
+          color: t.borderDefault,
           width: 1,
         ),
       ),
@@ -354,7 +334,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         children: [
           Icon(
             Icons.bolt_rounded,
-            color: theme.colorScheme.primary,
+            color: t.accent,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -362,9 +342,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               'Files are saved to your device and can be shared via Bluetooth, email, or messaging apps.',
               style: TextStyle(
                 fontSize: 14,
-                color: isDark
-                    ? Colors.grey.shade400
-                    : Colors.grey.shade600,
+                color: t.textSecondary,
                 height: 1.4,
               ),
             ),
@@ -375,6 +353,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   Future<void> _export(String format) async {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     setState(() {
       _isExporting = true;
       _exportingFormat = format;
@@ -454,9 +433,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Export failed: File not found'),
-                backgroundColor: Colors.red,
+              SnackBar(
+                content: const Text('Export failed: File not found'),
+                backgroundColor: t.error,
               ),
             );
           }
@@ -467,7 +446,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Export failed: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: t.error,
           ),
         );
       }

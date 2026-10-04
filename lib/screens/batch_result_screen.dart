@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/data_provider.dart';
+import '../theme/tokens.dart';
 
 class BatchResultScreen extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>> extractedDataList;
@@ -73,10 +74,11 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
   }
 
   void _showWarning(String message) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.orange.shade700,
+        backgroundColor: t.warning,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ),
@@ -87,6 +89,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
     final controllers = _pageControllers[_currentIndex];
     final person = controllers['point_person']?.text.trim() ?? '';
     final org = controllers['organization_name']?.text.trim() ?? '';
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     if (person.isEmpty) {
       _showWarning('⚠️ Person name is required for card ${_currentIndex + 1}');
@@ -126,7 +129,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                style: FilledButton.styleFrom(backgroundColor: t.warning),
                 child: const Text('Save Anyway'),
               ),
             ],
@@ -143,7 +146,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Save error: $e'), backgroundColor: t.error),
         );
       }
       return false;
@@ -163,13 +166,14 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
       );
     } else {
       if (mounted) {
+        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ All ${widget.extractedDataList.length} cards saved!'),
-            backgroundColor: Colors.green.shade700,
+            content: Text('All ${widget.extractedDataList.length} cards saved!'),
+            backgroundColor: t.success,
           ),
         );
-        Navigator.pop(context); // Pop back to Home
+        Navigator.pop(context);
       }
     }
   }
@@ -189,6 +193,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final t = theme.extension<KardoTokensExtension>()!.tokens;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -198,29 +203,29 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
         leadingWidth: 100,
         leading: TextButton.icon(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
-          label: const Text('Cancel Batch', style: TextStyle(color: Colors.grey, fontSize: 13)),
+          icon: Icon(Icons.close_rounded, size: 20, color: t.grey),
+          label: Text('Cancel Batch', style: TextStyle(color: t.grey, fontSize: 13)),
         ),
         title: Text(
           'Review ${_currentIndex + 1} of ${widget.extractedDataList.length}',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: t.text),
         ),
         centerTitle: true,
       ),
       body: PageView.builder(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Disable swipe to force using buttons
+        physics: const NeverScrollableScrollPhysics(),
         onPageChanged: (index) => setState(() => _currentIndex = index),
         itemCount: widget.extractedDataList.length,
         itemBuilder: (context, index) {
-          return _buildPage(index, theme, isDark);
+          return _buildPage(index, theme, isDark, t);
         },
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+            color: t.card,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
@@ -236,8 +241,8 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
                   onPressed: _isSaving ? null : _onSkip,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey.shade400),
-                    foregroundColor: Colors.grey.shade700,
+                    side: BorderSide(color: t.grey),
+                    foregroundColor: t.grey,
                   ),
                   child: const Text('Skip'),
                 ),
@@ -249,7 +254,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
                   onPressed: _isSaving ? null : _onNext,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF536DFE),
+                    backgroundColor: t.accent,
                   ),
                   child: _isSaving
                       ? const SizedBox(
@@ -269,7 +274,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
     );
   }
 
-  Widget _buildPage(int index, ThemeData theme, bool isDark) {
+  Widget _buildPage(int index, ThemeData theme, bool isDark, KardoTokens t) {
     final controllers = _pageControllers[index];
     final data = widget.extractedDataList[index];
     final imagePath = data['image_path']?.toString() ?? '';
@@ -277,7 +282,6 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       children: [
-        // Top section: Preview
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -288,7 +292,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
                   height: 120,
                   child: File(imagePath).existsSync()
                       ? Image.file(File(imagePath), fit: BoxFit.cover, alignment: Alignment.topCenter)
-                      : Container(color: Colors.grey.shade300, child: const Icon(Icons.image_not_supported)),
+                      : Container(color: t.surfaceAlt, child: const Icon(Icons.image_not_supported)),
                 ),
               ),
             ),
@@ -296,23 +300,23 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
         ),
         const SizedBox(height: 32),
 
-        _buildSectionTitle('Personal'),
+        _buildSectionTitle('Personal', t),
         _buildFieldGroup([
           _buildTextField('point_person', 'Full Name', controllers),
           _buildTextField('contact_email', 'Email Address', controllers),
           _buildTextField('contact_number', 'Phone Number', controllers),
-        ], theme, isDark),
+        ], t),
         const SizedBox(height: 24),
 
-        _buildSectionTitle('Work'),
+        _buildSectionTitle('Work', t),
         _buildFieldGroup([
           _buildTextField('organization_name', 'Company / Organization', controllers),
           _buildTextField('department', 'Job Title / Role', controllers),
           _buildTextField('url', 'Website URL', controllers),
-        ], theme, isDark),
+        ], t),
         const SizedBox(height: 24),
 
-        _buildSectionTitle('Organization Type'),
+        _buildSectionTitle('Organization Type', t),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -320,46 +324,46 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
           children: _tagOptions.map((tag) {
             final isSelected = _selectedTags[index] == tag;
             return ChoiceChip(
-              label: Text(tag, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.grey)),
+              label: Text(tag, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : t.grey)),
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) setState(() => _selectedTags[index] = tag);
               },
-              selectedColor: const Color(0xFF536DFE),
-              backgroundColor: theme.colorScheme.surface,
+              selectedColor: t.accent,
+              backgroundColor: t.card,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300),
+              side: BorderSide(color: isSelected ? Colors.transparent : t.grey.withOpacity(0.3)),
             );
           }).toList(),
         ),
         const SizedBox(height: 24),
 
-        _buildSectionTitle('Additional Details'),
+        _buildSectionTitle('Additional Details', t),
         _buildFieldGroup([
           _buildTextField('location', 'Location / Address', controllers),
           _buildTextField('notes', 'Notes', controllers, maxLines: 3),
-        ], theme, isDark),
+        ], t),
         const SizedBox(height: 24),
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, KardoTokens t) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
+        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: t.grey, letterSpacing: 1.2),
       ),
     );
   }
 
-  Widget _buildFieldGroup(List<Widget> children, ThemeData theme, bool isDark) {
+  Widget _buildFieldGroup(List<Widget> children, KardoTokens t) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: t.card,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+        border: Border.all(color: t.grey.withOpacity(0.2)),
       ),
       child: Column(
         children: children,
@@ -368,6 +372,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
   }
 
   Widget _buildTextField(String key, String label, Map<String, TextEditingController> controllers, {int maxLines = 1}) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: TextFormField(
@@ -376,7 +381,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
         style: GoogleFonts.inter(fontSize: 14),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          labelStyle: TextStyle(color: t.grey, fontSize: 13),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,
           enabledBorder: InputBorder.none,

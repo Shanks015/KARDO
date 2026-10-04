@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
 import '../theme/liquid_glass_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import 'contact_detail_screen.dart';
 import 'scanner_screen.dart';
@@ -48,13 +49,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0A0A0A) // Near black for dark mode
-          : LiquidGlassTheme.iceBlue,
+      backgroundColor: t.scaffoldBackground,
       body: SafeArea(
         child: IndexedStack(
           index: _currentIndex,
@@ -110,7 +108,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
     final displayName = user?.displayName ?? 'Guest User';
@@ -145,9 +143,9 @@ class _HomeViewState extends ConsumerState<_HomeView> {
         // Count by type
         final Map<String, int> typeCounts = {};
         for (final card in cards) {
-          final t =
+          final type =
               card['organization_type']?.toString() ?? 'BUSINESS';
-          typeCounts[t] = (typeCounts[t] ?? 0) + 1;
+          typeCounts[type] = (typeCounts[type] ?? 0) + 1;
         }
 
         return CustomScrollView(
@@ -160,6 +158,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                 displayName,
                 email,
                 isDark,
+                t,
               ),
             ),
             SliverToBoxAdapter(
@@ -229,9 +228,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
+                        color: t.textPrimary,
                       ),
                     ),
                     TextButton(
@@ -243,7 +240,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       child: Text(
                         'View All Scans',
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: t.accent,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -269,6 +266,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                             card,
                             index,
                             isDark,
+                            t,
                           );
                         },
                         childCount: recentCards.length,
@@ -281,9 +279,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                           child: Text(
                             'No scans yet',
                             style: TextStyle(
-                              color: isDark
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600,
+                              color: t.textSecondary,
                             ),
                           ),
                         ),
@@ -320,7 +316,8 @@ class _HomeViewState extends ConsumerState<_HomeView> {
       String initial,
       String displayName,
       String email,
-      bool isDark) {
+      bool isDark,
+      KardoTokens t) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Row(
@@ -334,9 +331,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDark
-                      ? Colors.grey.shade700
-                      : Colors.grey.shade300,
+                  color: t.surfaceBackground,
                 ),
                 child: Center(
                   child: Text(
@@ -344,9 +339,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? Colors.white
-                          : Colors.black87,
+                      color: t.textPrimary,
                     ),
                   ),
                 ),
@@ -360,9 +353,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? Colors.white
-                          : Colors.black,
+                      color: t.textPrimary,
                     ),
                   ),
                   if (email.isNotEmpty)
@@ -370,9 +361,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       email,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade600,
+                        color: t.textSecondary,
                       ),
                     ),
                 ],
@@ -388,8 +377,8 @@ class _HomeViewState extends ConsumerState<_HomeView> {
       BuildContext context,
       Map<String, dynamic> card,
       int index,
-      bool isDark) {
-    final theme = Theme.of(context);
+      bool isDark,
+      KardoTokens t) {
     final dominantColor =
         ImageProcessorService.hexToColor(card['dominant_color']?.toString() ??
             '0xFF1565C0');
@@ -458,17 +447,14 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: t.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Icon(
                           Icons.reply_rounded,
-                          color: theme.colorScheme.primary
-                              .withOpacity(0.5),
+                          color: t.accent.withOpacity(0.5),
                           size: 20,
                         ),
                       ],
@@ -480,17 +466,15 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                           '${role.isNotEmpty ? role : ''}${role.isNotEmpty && org.isNotEmpty ? ' at ' : ''}${org.isNotEmpty ? org : ''}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600,
+                            color: t.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     Row(
                       children: [
-                        const Icon(Icons.location_on,
-                            size: 12, color: Colors.grey),
+                         Icon(Icons.location_on,
+                            size: 12, color: t.textTertiary),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -499,9 +483,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                                 : 'Paris, 24 Street Avenue', // Mockup dummy text fallback
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600,
+                              color: t.textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -511,8 +493,8 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.phone,
-                            size: 12, color: Colors.grey),
+                         Icon(Icons.phone,
+                            size: 12, color: t.textTertiary),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -521,9 +503,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                                 : '+971 453 644 14',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600,
+                              color: t.textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -533,8 +513,8 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.email,
-                            size: 12, color: Colors.grey),
+                         Icon(Icons.email,
+                            size: 12, color: t.textTertiary),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -543,9 +523,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                                 : 'not.provided@example.com',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600,
+                              color: t.textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),

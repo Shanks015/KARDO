@@ -106,13 +106,9 @@ class LocalTransformerService {
       String address = "Not Found";
 
       if (recognizedText.text.trim().isEmpty) {
-        debugPrint('==== OCR TEXT IS EMPTY ====');
+        debugPrint('OCR text is empty');
         return _emptyResult();
       }
-
-      debugPrint('==== OCR RAW TEXT START ====');
-      debugPrint(recognizedText.text);
-      debugPrint('==== OCR RAW TEXT END ====');
 
       double maxWidth = 0.0;
       double cardMinY = 999999.0;
@@ -310,9 +306,7 @@ class LocalTransformerService {
         }
       };
       
-      debugPrint('==== OCR SCORES ====');
-      debugPrint(result.toString());
-      debugPrint('====================');
+      debugPrint('OCR extraction complete');
       
       return result;
 

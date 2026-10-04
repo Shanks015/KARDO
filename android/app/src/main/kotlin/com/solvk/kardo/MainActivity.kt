@@ -1,4 +1,4 @@
-package com.niknotjonas.visitingcard.mobile_app
+package com.solvk.kardo
 
 import io.flutter.embedding.android.FlutterActivity
 

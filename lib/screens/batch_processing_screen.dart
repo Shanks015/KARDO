@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/groq_service.dart';
 import '../services/local_transformer_service.dart';
 import '../services/image_processor_service.dart';
+import '../theme/tokens.dart';
 import 'batch_result_screen.dart';
 
 class BatchProcessingScreen extends ConsumerStatefulWidget {
@@ -83,17 +84,18 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = theme.extension<KardoTokensExtension>()!.tokens;
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text('Processing Batch'),
         automaticallyImplyLeading: false,
       ),
-      body: _buildProgress(theme),
+      body: _buildProgress(theme, t),
     );
   }
 
-  Widget _buildProgress(ThemeData theme) {
+  Widget _buildProgress(ThemeData theme, KardoTokens t) {
     final progress = (_currentIndex + 1) / widget.images.length;
     return Center(
       child: Padding(
@@ -110,8 +112,8 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
                   CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 6,
-                    backgroundColor: theme.colorScheme.surfaceVariant,
-                    color: theme.colorScheme.primary,
+                    backgroundColor: t.surfaceAlt,
+                    color: t.accent,
                   ),
                   Center(
                     child: Text(
@@ -121,7 +123,7 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
                   ),
                 ],
               ),
-            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: theme.colorScheme.secondary),
+            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: t.secondary),
             const SizedBox(height: 32),
             Text(
               'Processing ${_currentIndex + 1} of ${widget.images.length}',
@@ -130,13 +132,13 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
             const SizedBox(height: 8),
             Text(
               _currentStep,
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              style: theme.textTheme.bodyMedium?.copyWith(color: t.grey),
               textAlign: TextAlign.center,
             ).animate(onPlay: (c) => c.repeat()).fadeIn(duration: 500.ms).then().fadeOut(duration: 500.ms),
             const SizedBox(height: 24),
             Text(
               'No internet required',
-              style: TextStyle(fontSize: 12, color: theme.colorScheme.primary),
+              style: TextStyle(fontSize: 12, color: t.accent),
             ),
           ],
         ),

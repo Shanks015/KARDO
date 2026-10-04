@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/nfc_service.dart';
 import '../theme/atelier_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/zoomable_image_viewer.dart';
 import 'qr_share_screen.dart';
 
@@ -113,6 +114,7 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final name = _getField('point_person');
     final role = _getField('department');
     final org = _getField('organization_name');
@@ -123,40 +125,36 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
     final imagePath = card['image_path']?.toString() ?? '';
 
     final isDark = theme.brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0A0A0A) : const Color(0xFFCAF0F8);
-    final cardSurface = isDark ? const Color(0xFF1A1A2E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF03045E);
-    final subtextColor = isDark ? const Color(0xFFB0C4D8) : const Color(0xFF4A5568);
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: t.scaffoldBackground,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
-            backgroundColor: bgColor,
+            backgroundColor: t.scaffoldBackground,
             elevation: 0,
             leading: IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface),
+              icon: Icon(Icons.arrow_back_ios_new, color: t.textPrimary),
             ),
             actions: [
               IconButton(
                 onPressed: _addToContacts,
-                icon: Icon(Icons.person_add_alt_1_rounded, color: theme.colorScheme.onSurface),
+                icon: Icon(Icons.person_add_alt_1_rounded, color: t.textPrimary),
                 tooltip: 'Add to Contacts',
               ),
               IconButton(
                 onPressed: _deleteCard,
-                icon: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.onSurface),
+                icon: Icon(Icons.delete_outline_rounded, color: t.textPrimary),
                 tooltip: 'Delete',
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                color: cardSurface,
+                color: t.cardBackground,
                 alignment: Alignment.center,
                 padding: const EdgeInsets.only(top: 60, bottom: 20),
                 child: Transform.rotate(
@@ -164,8 +162,8 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
                   child: Container(
                     width: 200, // Fixed width to look like a physical card
                     decoration: BoxDecoration(
-                      boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
-                      border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                      border: Border.all(color: t.borderDefault, width: 1),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: GestureDetector(
@@ -205,7 +203,7 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
                               : Container(
                                   color: theme.colorScheme.surfaceVariant,
                                   child: Center(
-                                    child: Icon(Icons.credit_card, size: 80, color: theme.colorScheme.primary),
+                                    child: Icon(Icons.credit_card, size: 80, color: t.accent),
                                   ),
                                 ),
                         ),
@@ -222,14 +220,14 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name.isEmpty ? 'Unknown' : name, style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
+                  Text(name.isEmpty ? 'Unknown' : name, style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: t.textPrimary)),
                   if (role.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(role, style: theme.textTheme.headlineMedium?.copyWith(color: subtextColor)),
+                    Text(role, style: theme.textTheme.headlineMedium?.copyWith(color: t.textSecondary)),
                   ],
                   if (org.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(org, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    Text(org, style: theme.textTheme.titleMedium?.copyWith(color: t.accent, fontWeight: FontWeight.bold)),
                   ],
                   const SizedBox(height: 32),
 
@@ -251,7 +249,7 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
                   const SizedBox(height: 48),
 
                   if (phone.isNotEmpty || email.isNotEmpty || url.isNotEmpty || location.isNotEmpty || _getFormattedCapturedDateTime().isNotEmpty) ...[
-                    Text('DETAILS', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    Text('DETAILS', style: theme.textTheme.labelMedium?.copyWith(color: t.textSecondary)),
                     const SizedBox(height: 16),
                     _buildDataField('PHONE NUMBER', phone, _launchPhone, theme),
                     _buildDataField('EMAIL ADDRESS', email, _launchEmail, theme),
@@ -272,6 +270,7 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
   }
 
   Widget _buildSquareAction(IconData icon, VoidCallback onTap, ThemeData theme) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(30),
@@ -279,28 +278,29 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: t.cardBackground,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
-          boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+          border: Border.all(color: t.borderDefault, width: 1),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
         ),
-        child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
+        child: Icon(icon, color: t.textPrimary, size: 20),
       ),
     );
   }
 
   Widget _buildDataField(String label, String value, VoidCallback? onTap, ThemeData theme) {
     if (value.isEmpty) return const SizedBox.shrink();
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return InkWell(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant, width: 1))),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.borderDefault, width: 1))),
         padding: const EdgeInsets.only(bottom: 8, top: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text(label, style: theme.textTheme.labelMedium?.copyWith(color: t.textSecondary)),
             const SizedBox(height: 4),
             Text(value, style: theme.textTheme.labelLarge, overflow: TextOverflow.visible),
           ],
@@ -400,11 +400,12 @@ class _NfcBottomSheetState extends State<_NfcBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: t.cardBackground,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
@@ -413,7 +414,7 @@ class _NfcBottomSheetState extends State<_NfcBottomSheet> {
           Icon(
             _done ? Icons.check_circle_rounded : Icons.nfc_rounded,
             size: 64,
-            color: _done ? Colors.green : const Color(0xFF00897B),
+            color: _done ? Colors.green : t.accent,
           ).animate(onPlay: (c) => _writing ? c.repeat() : null)
             .shimmer(duration: 1500.ms, color: Colors.teal),
           const SizedBox(height: 20),
@@ -422,7 +423,7 @@ class _NfcBottomSheetState extends State<_NfcBottomSheet> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(_status, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+          Text(_status, textAlign: TextAlign.center, style: TextStyle(color: t.textTertiary)),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,

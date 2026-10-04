@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import '../theme/liquid_glass_theme.dart';
+import '../theme/tokens.dart';
+
+/// Helper to get tokens from context
+KardoTokens _tokens(BuildContext context) =>
+    Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
 /// A widget that applies glassmorphism effect using BackdropFilter
 class GlassmorphismContainer extends StatelessWidget {
@@ -30,19 +33,32 @@ class GlassmorphismContainer extends StatelessWidget {
   factory GlassmorphismContainer.fromTheme(
     BuildContext context, {
     required Widget child,
-    double blurSigmaX = 10,
-    double blurSigmaY = 10,
+    double? blurSigmaX,
+    double? blurSigmaY,
   }) {
     final theme = Theme.of(context);
     final glassExt = theme.extension<GlassmorphismExtension>()!;
     final glassConfig = glassExt.config;
-    final borderRadius = BorderRadius.all(
-        Radius.circular(glassExt.mediumRadius)); // Use extension for radius
+    final borderRadius = BorderRadius.all(Radius.circular(glassExt.largeRadius));
+
+    // If blur is 0 or very small, use opaque card (non-glass mode)
+    if (glassConfig.blurSigmaX <= 1) {
+      final t = _tokens(context);
+      return GlassmorphismContainer(
+        child: child,
+        blurSigmaX: 0,
+        blurSigmaY: 0,
+        borderWidth: 1,
+        backgroundColor: t.cardBackground,
+        borderColor: t.borderDefault,
+        borderRadius: borderRadius,
+      );
+    }
 
     return GlassmorphismContainer(
       child: child,
-      blurSigmaX: blurSigmaX,
-      blurSigmaY: blurSigmaY,
+      blurSigmaX: blurSigmaX ?? glassConfig.blurSigmaX,
+      blurSigmaY: blurSigmaY ?? glassConfig.blurSigmaY,
       borderWidth: glassConfig.borderWidth,
       backgroundColor: glassConfig.backgroundColor,
       borderColor: glassConfig.borderColor,
@@ -52,21 +68,29 @@ class GlassmorphismContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If blur is 0, skip BackdropFilter entirely (corporate mode)
+    if (blurSigmaX <= 0 && blurSigmaY <= 0) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border.all(color: borderColor, width: borderWidth),
+          borderRadius: borderRadius,
+        ),
+        padding: padding,
+        child: child,
+      );
+    }
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: blurSigmaX,
-          sigmaY: blurSigmaY,
-        ),
+        filter: ImageFilter.blur(sigmaX: blurSigmaX, sigmaY: blurSigmaY),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: backgroundColor,
-            border: Border.all(
-              color: borderColor,
-              width: borderWidth,
-            ),
+            border: Border.all(color: borderColor, width: borderWidth),
             borderRadius: borderRadius,
           ),
           padding: padding,
@@ -77,26 +101,18 @@ class GlassmorphismContainer extends StatelessWidget {
   }
 }
 
-/// Utility class for creating iOS-style squircles (rounded corners with continuous curvature)
+/// Utility class for creating iOS-style squircles
 class Squircles {
-  /// Creates a squircle border radius that approximates Apple's squircles
-  /// Values are tuned to provide a good approximation of Apple's squircle shape
   static BorderRadius squirclify(double radius) {
-    // Using a slightly smaller radius for corners to mimic the continuous curve
-    // of Apple's squircle rather than a perfect circular radius
     final double effectiveRadius = radius * 0.9;
     return BorderRadius.all(Radius.circular(effectiveRadius));
   }
 
-  /// Creates a squircle border
   static BorderSide squirclarBorder({
     required Color color,
     required double width,
   }) {
-    return BorderSide(
-      color: color,
-      width: width,
-    );
+    return BorderSide(color: color, width: width);
   }
 }
 
@@ -117,26 +133,18 @@ class IOSSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final t = _tokens(context);
     final controllerToUse = controller ?? TextEditingController(text: initialValue ?? '');
-
-    // Initialize controller if needed
-    if (controller == null && initialValue != null) {
-      controllerToUse.text = initialValue ?? '';
-    }
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey.shade800
-            : Colors.grey.shade100,
+        color: t.surfaceBackground,
         borderRadius: Squircles.squirclify(25),
+        border: Border.all(color: t.borderDefault, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -146,27 +154,14 @@ class IOSSearchBar extends StatelessWidget {
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(
-            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-            fontSize: 16,
-          ),
-          prefixIcon: Icon(
-            Icons.search,
-            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-            size: 20,
-          ),
+          hintStyle: TextStyle(color: t.textTertiary, fontSize: 16),
+          prefixIcon: Icon(Icons.search, color: t.textTertiary, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           isDense: true,
         ),
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
-          fontSize: 16,
-        ),
-        cursorColor: Theme.of(context).primaryColor,
+        style: TextStyle(color: t.textPrimary, fontSize: 16),
+        cursorColor: t.accent,
       ),
     );
   }
@@ -177,7 +172,7 @@ class IOSBorderedButton extends StatelessWidget {
   final String text;
   final IconData icon;
   final VoidCallback onPressed;
-  final bool isPrimary; // true for filled, false for outlined
+  final bool isPrimary;
   final bool isLoading;
   final double width;
   final double height;
@@ -195,28 +190,20 @@ class IOSBorderedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
+    final t = _tokens(context);
 
     return SizedBox(
       width: width,
       height: height,
       child: ElevatedButton.icon(
         onPressed: isLoading ? null : onPressed,
-        icon: Icon(
-          icon,
-          color: isPrimary
-              ? (isDark ? Colors.black : Colors.white)
-              : (isDark ? Colors.white : colorScheme.primary),
-        ),
+        icon: Icon(icon, color: isPrimary ? t.textOnAccent : t.accent),
         label: isLoading
             ? SizedBox(
-                width: 20,
-                height: 20,
+                width: 20, height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(t.textOnAccent),
                 ),
               )
             : Text(
@@ -224,40 +211,22 @@ class IOSBorderedButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: isPrimary
-                      ? (isDark ? Colors.black : Colors.white)
-                      : (isDark ? Colors.white : colorScheme.primary),
+                  color: isPrimary ? t.textOnAccent : t.accent,
                 ),
               ),
         style: ButtonStyle(
           backgroundColor: MaterialStateProperty.all(
-            isPrimary
-                ? (isDark
-                    ? Colors.grey.shade800
-                    : colorScheme.primary)
-                : Colors.transparent,
+            isPrimary ? t.accent : Colors.transparent,
           ),
           foregroundColor: MaterialStateProperty.all(
-            isPrimary
-                ? (isDark ? Colors.black : Colors.black)
-                : (isDark ? Colors.white : colorScheme.primary),
+            isPrimary ? t.textOnAccent : t.accent,
           ),
           overlayColor: MaterialStateProperty.all(
-            isPrimary
-                ? (isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1))
-                : (isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1)),
+            (isPrimary ? t.accent : t.accent).withOpacity(0.1),
           ),
           side: MaterialStateProperty.all(
             BorderSide(
-              color: isPrimary
-                  ? Colors.transparent
-                  : (isDark
-                      ? Colors.white.withOpacity(0.5)
-                      : colorScheme.primary),
+              color: isPrimary ? Colors.transparent : t.accent,
               width: 1.5,
             ),
           ),
@@ -273,7 +242,7 @@ class IOSBorderedButton extends StatelessWidget {
   }
 }
 
-/// iOS-style segmented control (Fully Responsive & Animated)
+/// iOS-style segmented control
 class IOSegmentedControl extends StatelessWidget {
   final List<String> segments;
   final int selectedIndex;
@@ -290,19 +259,15 @@ class IOSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final t = _tokens(context);
     if (segments.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+        color: t.borderSubtle,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-        ),
+        border: Border.all(color: t.borderDefault, width: 1),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -313,7 +278,6 @@ class IOSegmentedControl extends StatelessWidget {
 
           return Stack(
             children: [
-              // Animated Indicator Background Pill
               AnimatedAlign(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.fastOutSlowIn,
@@ -323,13 +287,11 @@ class IOSegmentedControl extends StatelessWidget {
                   child: Container(
                     height: 38,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? theme.colorScheme.primary.withOpacity(0.9)
-                          : theme.colorScheme.primary,
+                      color: t.accent,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          color: t.accent.withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -338,7 +300,6 @@ class IOSegmentedControl extends StatelessWidget {
                   ),
                 ),
               ),
-              // Segment Option Buttons
               Row(
                 children: List.generate(count, (index) {
                   final isSelected = selectedIndex == index;
@@ -358,11 +319,8 @@ class IOSegmentedControl extends StatelessWidget {
                           children: [
                             if (icon != null) ...[
                               Icon(
-                                icon,
-                                size: 16,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+                                icon, size: 16,
+                                color: isSelected ? t.textOnAccent : t.textTertiary,
                               ),
                               const SizedBox(width: 4),
                             ],
@@ -375,9 +333,7 @@ class IOSegmentedControl extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+                                    color: isSelected ? t.textOnAccent : t.textTertiary,
                                   ),
                                   maxLines: 1,
                                 ),
@@ -419,8 +375,7 @@ class IOSListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _tokens(context);
 
     return Material(
       color: Colors.transparent,
@@ -428,40 +383,23 @@ class IOSListTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: Squircles.squirclify(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(width: 12),
-              ],
+              if (leading != null) ...[leading!, const SizedBox(width: 12)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     title,
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      subtitle!,
-                    ],
+                    if (subtitle != null) ...[const SizedBox(height: 4), subtitle!],
                   ],
                 ),
               ),
               const SizedBox(width: 12),
               if (showChevron)
-                Icon(
-                  Icons.chevron_right,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
-                  size: 20,
-                ),
-              if (trailing != null && !showChevron) ...[
-                trailing!,
-              ],
+                Icon(Icons.chevron_right, color: t.textTertiary, size: 20),
+              if (trailing != null && !showChevron) trailing!,
             ],
           ),
         ),
@@ -492,8 +430,7 @@ class IOSNavBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _tokens(context);
 
     return AppBar(
       backgroundColor: Colors.transparent,
@@ -503,13 +440,13 @@ class IOSNavBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white : Colors.black,
+          color: t.textPrimary,
         ),
       ),
       centerTitle: centerTitle,
       leading: showBackButton
           ? IconButton(
-              icon: const Icon(Icons.chevron_left),
+              icon: Icon(Icons.chevron_left, color: t.textPrimary),
               onPressed: onBackPressed ?? () => Navigator.of(context).maybePop(),
             )
           : null,
@@ -533,17 +470,18 @@ class IOSBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _tokens(context);
 
     return Container(
+      padding: EdgeInsets.only(
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey.shade900
-            : Colors.white,
+        color: t.cardBackground,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -555,20 +493,13 @@ class IOSBottomNavBar extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: theme.colorScheme.primary,
-        unselectedItemColor: isDark
-            ? Colors.grey.shade400
-            : Colors.grey.shade600,
+        selectedItemColor: t.accent,
+        unselectedItemColor: t.textTertiary,
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        selectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-        ),
+        iconSize: 28,
+        selectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 13),
         items: items,
       ),
     );
@@ -592,13 +523,12 @@ class IOSFloatingActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _tokens(context);
 
     return FloatingActionButton(
       onPressed: onPressed,
-      backgroundColor: theme.colorScheme.primary,
-      foregroundColor: isDark ? Colors.black : Colors.white,
+      backgroundColor: t.accent,
+      foregroundColor: t.textOnAccent,
       child: Icon(icon),
       mini: isMini,
       tooltip: tooltip,

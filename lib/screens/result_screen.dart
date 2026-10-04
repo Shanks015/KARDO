@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
+import '../theme/tokens.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> extractedData;
@@ -103,10 +104,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   void _showWarning(String message) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.orange.shade700,
+        backgroundColor: t.warning,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ),
@@ -120,6 +122,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Future<void> _saveCard() async {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final person = _controllers['point_person']?.text.trim() ?? '';
     final org = _controllers['organization_name']?.text.trim() ?? '';
 
@@ -168,7 +171,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                style: FilledButton.styleFrom(backgroundColor: t.warning),
                 child: const Text('Save Anyway'),
               ),
             ],
@@ -190,7 +193,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 28),
+                Icon(Icons.check_circle_rounded, color: t.success, size: 28),
                 const SizedBox(width: 10),
                 const Text('Card Saved', style: TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -202,7 +205,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   Navigator.pop(ctx);
                 },
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF536DFE),
+                  backgroundColor: t.accent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
                 child: const Text('Great!'),
@@ -228,6 +231,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
@@ -238,13 +242,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         leadingWidth: 140,
         leading: TextButton.icon(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: Color(0xFF536DFE)),
-          label: const Text('New Contact', style: TextStyle(color: Color(0xFF536DFE), fontSize: 13, fontWeight: FontWeight.w600)),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: t.accent),
+          label: Text('New Contact', style: TextStyle(color: t.accent, fontSize: 13, fontWeight: FontWeight.w600)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+            child: Text('Cancel', style: TextStyle(color: t.textTertiary, fontSize: 13, fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -282,21 +286,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF536DFE).withOpacity(0.1),
+                      color: t.accent.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF536DFE).withOpacity(0.2)),
+                      border: Border.all(color: t.accent.withOpacity(0.2)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.access_time_filled_rounded, size: 14, color: Color(0xFF536DFE)),
+                        Icon(Icons.access_time_filled_rounded, size: 14, color: t.accent),
                         const SizedBox(width: 6),
                         Text(
                           'Captured On: ${_getFormattedCapturedDateTime()}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF536DFE),
+                            color: t.accent,
                           ),
                         ),
                       ],
@@ -311,20 +315,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50.withOpacity(isDark ? 0.15 : 0.8),
+                      color: t.warning.withOpacity(isDark ? 0.15 : 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.orange.shade300, width: 1),
+                      border: Border.all(color: t.warning, width: 1),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
+                        Icon(Icons.warning_amber_rounded, color: t.warning, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'AI detected some missing details (Name or Company). Please review and fill them in manually.',
                             style: TextStyle(
                               fontSize: 13,
-                              color: isDark ? Colors.orange.shade200 : Colors.orange.shade900,
+                              color: isDark ? t.warning : t.textPrimary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -366,7 +370,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 FilledButton(
                   onPressed: _isSaving ? null : _saveCard,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF536DFE),
+                    backgroundColor: t.accent,
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
@@ -387,23 +391,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 8),
       child: Text(
         title,
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade500),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.textTertiary),
       ),
     );
   }
 
   Widget _buildFieldGroup(List<Widget> children) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
-          if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -412,7 +418,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           return Column(
             children: [
               e.value,
-              if (!isLast) Divider(height: 1, indent: 48, color: isDark ? Colors.grey.shade800 : const Color(0xFFF0F0F0)),
+              if (!isLast) Divider(height: 1, indent: 48, color: isDark ? t.borderDefault : t.borderSubtle),
             ],
           );
         }).toList(),
@@ -421,6 +427,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Widget _buildTextField(String key, String placeholder, {int maxLines = 1}) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return TextFormField(
       controller: _controllers[key],
       keyboardType: key == 'contact_number' ? TextInputType.phone : TextInputType.text,
@@ -428,8 +435,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: placeholder,
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal),
-        prefixIcon: Icon(_fieldIcons[key], color: Colors.grey.shade400, size: 20),
+        hintStyle: TextStyle(color: t.textTertiary, fontWeight: FontWeight.normal),
+        prefixIcon: Icon(_fieldIcons[key], color: t.textTertiary, size: 20),
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
@@ -437,19 +444,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Widget _buildDropdownField(String label, String value, List<String> items, void Function(String?) onChanged) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final effectiveItems = items.contains(value) ? items : [...items, value];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          Icon(Icons.label_outline_rounded, color: Colors.grey.shade400, size: 20),
+          Icon(Icons.label_outline_rounded, color: t.textTertiary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: value,
                 isExpanded: true,
-                icon: Icon(Icons.expand_more, color: Colors.grey.shade400, size: 20),
+                icon: Icon(Icons.expand_more, color: t.textTertiary, size: 20),
                 style: TextStyle(
                   color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87, 
                   fontSize: 15, 

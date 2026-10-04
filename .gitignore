@@ -44,3 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .env
+android/key.properties
+android/local.properties
+lib/firebase_options.dart
+firebase_options.dart
+Extracted_Contact_Numbers.csv
+device_log*.txt
+build_log.txt
+Test Cards/

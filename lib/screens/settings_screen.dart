@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/config_provider.dart';
 import '../providers/data_provider.dart';
 import '../theme/liquid_glass_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import '../services/google_drive_service.dart';
 
@@ -33,7 +34,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _backupFrequency = prefs.getString('backup_frequency') ?? 'Never';
+      _backupFrequency = prefs.getString('backup_frequency') ?? 'Daily';
     });
 
     final account = await GoogleDriveService.getCurrentUser();
@@ -74,11 +75,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final config = ref.watch(configProvider);
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0A0A0A) // Near black for dark mode
-          : LiquidGlassTheme.iceBlue,
+      backgroundColor: t.scaffoldBackground,
       appBar: const IOSNavBar(
         title: 'Settings',
         showBackButton: false,
@@ -88,6 +88,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding:
               const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           children: [
+            // Appearance Section
+            _buildSectionHeader('Appearance', t),
+            const SizedBox(height: 12),
+            GlassmorphismContainer.fromTheme(
+              context,
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Dark Mode',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: t.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  config.isDark ? 'Dark theme enabled' : 'Light theme enabled',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: t.textSecondary,
+                  ),
+                ),
+                secondary: Icon(
+                  config.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: t.accent,
+                ),
+                value: config.isDark,
+                activeColor: t.accent,
+                onChanged: (_) => ref.read(configProvider.notifier).toggleTheme(),
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Backup & Restore Section
             _currentUser == null
                 ? GlassmorphismContainer.fromTheme(
@@ -96,25 +129,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
                         Icons.cloud_upload_rounded,
-                        color: Colors.blue,
+                        color: t.accent,
                       ),
                       title: Text(
                         'Google Drive Backup',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? Colors.white
-                              : Colors.black,
+                          color: t.textPrimary,
                         ),
                       ),
                       subtitle: Text(
                         'Sign in to securely backup your cards',
                         style: TextStyle(
                           fontSize: 14,
-                          color: isDark
-                              ? Colors.grey.shade400
-                              : Colors.grey.shade600,
+                          color: t.textSecondary,
                         ),
                       ),
                       trailing: FilledButton(
@@ -123,14 +152,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           'Sign In',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? Colors.black
-                                : Colors.white,
+                            color: t.textOnAccent,
                           ),
                         ),
                         style: ButtonStyle(
                           backgroundColor: MaterialStateProperty.all(
-                            theme.colorScheme.primary,
+                            t.accent,
                           ),
                           shape: MaterialStateProperty.all(
                             RoundedRectangleBorder(
@@ -163,18 +190,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : Colors.black,
+                            color: t.textPrimary,
                           ),
                         ),
                         subtitle: Text(
                           'Last backup: $_lastBackupTime',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600,
+                            color: t.textSecondary,
                           ),
                         ),
                         trailing: OutlinedButton(
@@ -185,17 +208,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             'Sign Out',
                             style: TextStyle(
                               fontSize: 14,
-                              color: isDark
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: t.textPrimary,
                             ),
                           ),
                           style: ButtonStyle(
                             side: MaterialStateProperty.all(
                               BorderSide(
-                                color: isDark
-                                    ? Colors.white
-                                    : Colors.black,
+                                color: t.borderDefault,
                                 width: 1,
                               ),
                             ),
@@ -218,9 +237,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : Colors.black,
+                            color: t.textPrimary,
                           ),
                         ),
                         trailing: DropdownButton<String>(
@@ -234,9 +251,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       f,
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black,
+                                        color: t.textPrimary,
                                       ),
                                     ),
                                   ))
@@ -267,9 +282,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               style: ButtonStyle(
                                 side: MaterialStateProperty.all(
                                   BorderSide(
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.black,
+                                    color: t.borderDefault,
                                     width: 1,
                                   ),
                                 ),
@@ -292,7 +305,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               label: const Text('Back Up'),
                               style: ButtonStyle(
                                 backgroundColor: MaterialStateProperty.all(
-                                  theme.colorScheme.primary,
+                                  t.accent,
                                 ),
                                 shape: MaterialStateProperty.all(
                                   RoundedRectangleBorder(
@@ -313,13 +326,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             // About Section
             Center(
-              child: Text(
+              child:               Text(
                 'kardo Standalone v3.0.0',
                 style: TextStyle(
                   fontSize: 12,
-                  color: isDark
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade600,
+                  color: t.textTertiary,
                 ),
               ),
             ),
@@ -332,7 +343,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _handleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      await GoogleSignIn().signIn();
+      _currentUser = await GoogleDriveService.signIn();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -343,12 +354,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _handleSignOut() async {
     setState(() => _isLoading = true);
-    await GoogleSignIn().signOut();
+    await GoogleDriveService.signOut();
     await FirebaseAuth.instance.signOut();
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() {
+        _currentUser = null;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _handleRestore() async {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     if (_currentUser == null) {
       await _handleSignIn();
       if (_currentUser == null) return;
@@ -369,7 +386,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             style: ButtonStyle(
               backgroundColor: MaterialStateProperty.all(
-                Colors.red,
+                t.error,
               ),
             ),
             child: const Text('Restore'),
@@ -389,9 +406,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         SnackBar(
           content: Text(success
               ? 'Restore successful! Your cards are now loaded.'
-              : 'Restore failed or no backup found.'),
+              : GoogleDriveService.lastError ??
+                  'Restore failed or no backup found.'),
           backgroundColor:
-              success ? Colors.green : Colors.red,
+              success ? t.success : t.error,
         ),
       );
     }
@@ -401,6 +419,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _handleBackupNow() async {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
+
+    if (_currentUser == null) {
+      await _handleSignIn();
+      if (_currentUser == null) return;
+    }
+
     setState(() => _isLoading = true);
     final success = await GoogleDriveService.backupToDrive();
     setState(() => _isLoading = false);
@@ -410,12 +435,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         SnackBar(
           content: Text(success
               ? 'Backup successful!'
-              : 'Backup failed. Please try again.'),
+              : GoogleDriveService.lastError ??
+                  'Backup failed. Please try again.'),
           backgroundColor:
-              success ? Colors.green : Colors.red,
+              success ? t.success : t.error,
         ),
       );
     }
     if (success) _refreshLastBackupDate();
+  }
+
+  Widget _buildSectionHeader(String title, KardoTokens t) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: t.textTertiary,
+        letterSpacing: 0.5,
+      ),
+    );
   }
 }

@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/liquid_glass_theme.dart';
 import 'providers/config_provider.dart';
+import 'services/auto_backup_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,11 +23,37 @@ void main() async {
   runApp(const ProviderScope(child: KardoApp()));
 }
 
-class KardoApp extends ConsumerWidget {
+class KardoApp extends ConsumerStatefulWidget {
   const KardoApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KardoApp> createState() => _KardoAppState();
+}
+
+class _KardoAppState extends ConsumerState<KardoApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.resumed) {
+      AutoBackupService.runIfNeeded();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = ref.watch(configProvider).isDark;
 
     return MaterialApp(

@@ -48,9 +48,7 @@ class OfflineTransformerService {
       if (_interpreter != null) {
         final inputTensor = _interpreter!.getInputTensor(0);
         final outputTensor = _interpreter!.getOutputTensor(0);
-        print('Model Info:');
-        print('  Input shape: ${inputTensor.shape}');
-        print('  Output shape: ${outputTensor.shape}');
+        debugPrint('Offline model loaded: input=${inputTensor.shape}, output=${outputTensor.shape}');
       }
     } catch (e, stackTrace) {
       debugPrint('Failed to load offline transformer model: $e');

@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
 import '../theme/liquid_glass_theme.dart';
+import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import '../widgets/zoomable_image_viewer.dart';
 import 'contact_detail_screen.dart';
@@ -79,13 +80,12 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dataState = ref.watch(sheetDataProvider);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0A0A0A)
-          : LiquidGlassTheme.iceBlue,
+      backgroundColor: t.scaffoldBackground,
       appBar: IOSNavBar(
         title: 'My Contacts',
         showBackButton: false,
@@ -133,7 +133,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                           color: isSelected
                               ? Colors.white
-                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                              : (isDark ? t.textTertiary : t.textTertiary),
                         ),
                       ),
                       selected: isSelected,
@@ -141,14 +141,14 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                       showCheckmark: false,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                      selectedColor: theme.colorScheme.primary,
+                      backgroundColor: isDark ? t.surfaceBackground : t.surfaceBackground,
+                      selectedColor: t.accent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
                           color: isSelected
-                              ? theme.colorScheme.primary
-                              : (isDark ? Colors.grey.shade600 : Colors.grey.shade300),
+                              ? t.accent
+                              : t.borderDefault,
                           width: 1,
                         ),
                       ),
@@ -210,6 +210,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
 
   // ── List View ─────────────────────────────────────────────────────────────
   Widget _buildListView(List<Map<String, dynamic>> cards, bool isDark) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return RefreshIndicator(
       onRefresh: () => ref.read(localCardsProvider.notifier).loadCards(),
       child: ListView.builder(
@@ -306,16 +307,16 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white : Colors.black,
+                                        color: t.textPrimary,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  Text('#$slNo', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  Text('#$slNo', style: TextStyle(fontSize: 11, color: t.textTertiary)),
                                 ],
                               ),
                               if (role.isNotEmpty)
-                                Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                Text(role, style: TextStyle(fontSize: 12, color: t.textTertiary), overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 4),
                               if (org.isNotEmpty)
                                 Row(children: [
@@ -326,23 +327,23 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
                               const SizedBox(height: 4),
                               if (phone.isNotEmpty)
                                 Row(children: [
-                                  const Icon(Icons.phone, size: 12, color: Colors.grey),
+                                  Icon(Icons.phone, size: 12, color: t.textTertiary),
                                   const SizedBox(width: 4),
-                                  Expanded(child: Text(phone, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text(phone, style: TextStyle(fontSize: 12, color: t.textTertiary), overflow: TextOverflow.ellipsis)),
                                 ]),
                               if (email.isNotEmpty)
                                 Row(children: [
-                                  const Icon(Icons.email, size: 12, color: Colors.grey),
+                                  Icon(Icons.email, size: 12, color: t.textTertiary),
                                   const SizedBox(width: 4),
-                                  Expanded(child: Text(email, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                                  Expanded(child: Text(email, style: TextStyle(fontSize: 12, color: t.textTertiary), overflow: TextOverflow.ellipsis)),
                                 ]),
                             ],
                           ),
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Icon(Icons.chevron_right, color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Icon(Icons.chevron_right, color: t.textTertiary),
                       ),
                     ],
                   ),
@@ -357,6 +358,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
 
   // ── Carousel / Gallery View ──────────────────────────────────────────────
   Widget _buildCarouselView(List<Map<String, dynamic>> cards) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Column(
       children: [
         Expanded(
@@ -504,8 +506,8 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
               height: 6,
               decoration: BoxDecoration(
                 color: i == _carouselIndex
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey.shade400,
+                    ? t.accent
+                    : t.textTertiary,
                 borderRadius: BorderRadius.circular(4),
               ),
             );
@@ -535,14 +537,14 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   }
 
   Widget _buildKanbanColumn(String title, List<Map<String, dynamic>> cards, bool isDark) {
-    final theme = Theme.of(context);
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final columnColors = {
-      'New Lead': const Color(0xFF5E35B1),
-      'Contacted': const Color(0xFF1565C0),
-      'Followed Up': const Color(0xFF00897B),
-      'Closed': const Color(0xFF2E7D32),
+      'New Lead': t.kanbanNewLead,
+      'Contacted': t.kanbanContacted,
+      'Followed Up': t.kanbanFollowedUp,
+      'Closed': t.kanbanClosed,
     };
-    final color = columnColors[title] ?? theme.colorScheme.primary;
+    final color = columnColors[title] ?? t.accent;
 
     return Container(
       width: 230,
@@ -659,11 +661,12 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   }
 
   Widget _buildKanbanCardContent(Map<String, dynamic> card, Color color, String name, String org, String phone, bool isDark) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.white,
+        color: t.cardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border(left: BorderSide(color: color, width: 3)),
         boxShadow: [
@@ -673,7 +676,7 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name.isEmpty ? 'Unknown' : name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black), overflow: TextOverflow.ellipsis),
+          Text(name.isEmpty ? 'Unknown' : name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: t.textPrimary), overflow: TextOverflow.ellipsis),
           if (org.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(org, style: TextStyle(fontSize: 11, color: color), overflow: TextOverflow.ellipsis),
@@ -681,9 +684,9 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
           if (phone.isNotEmpty) ...[
             const SizedBox(height: 3),
             Row(children: [
-              const Icon(Icons.phone, size: 10, color: Colors.grey),
+              Icon(Icons.phone, size: 10, color: t.textTertiary),
               const SizedBox(width: 3),
-              Text(phone, style: const TextStyle(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis),
+              Text(phone, style: TextStyle(fontSize: 11, color: t.textTertiary), overflow: TextOverflow.ellipsis),
             ]),
           ],
         ],
@@ -692,18 +695,19 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   }
 
   Widget _buildEmpty(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.credit_card_off_rounded, size: 72, color: Colors.grey.shade300),
+          Icon(Icons.credit_card_off_rounded, size: 72, color: t.textTertiary),
           const SizedBox(height: 16),
           Text(
             _searchQuery.isNotEmpty ? 'No matching contacts' : 'No contacts yet',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: t.textTertiary),
           ),
           const SizedBox(height: 8),
-          const Text('Scan a business card to get started', style: TextStyle(color: Colors.grey)),
+          Text('Scan a business card to get started', style: TextStyle(color: t.textTertiary)),
         ],
       ),
     );

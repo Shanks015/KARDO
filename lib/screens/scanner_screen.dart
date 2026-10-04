@@ -9,6 +9,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/groq_service.dart';
 import '../services/local_transformer_service.dart';
 import '../services/image_processor_service.dart';
+import '../theme/tokens.dart';
 import 'result_screen.dart';
 import 'batch_processing_screen.dart';
 import 'camera_screen.dart';
@@ -154,22 +155,23 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFCAF0F8),
+      backgroundColor: t.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Scan Business Card'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: _isProcessing
-          ? _buildProcessingView(theme)
-          : _buildOptionsView(theme),
+          ? _buildProcessingView(theme, t)
+          : _buildOptionsView(theme, t),
     );
   }
 
-  Widget _buildProcessingView(ThemeData theme) {
+  Widget _buildProcessingView(ThemeData theme, KardoTokens t) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -178,7 +180,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             width: 24,
             height: 24,
             child: CircularProgressIndicator(
-              color: theme.colorScheme.primary,
+              color: t.accent,
               strokeWidth: 2,
             ),
           ),
@@ -193,7 +195,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       ),
     );
   }
-  Widget _buildOptionsView(ThemeData theme) {
+  Widget _buildOptionsView(ThemeData theme, KardoTokens t) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -207,30 +209,34 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             const SizedBox(height: 8),
             Text(
               'All processing happens 100% offline on your device',
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              style: theme.textTheme.bodyMedium?.copyWith(color: t.textTertiary),
             ),
-            const SizedBox(height: 32),
+            const Spacer(),
             if (_supportsCamera) ...[
               _buildOptionCard(
                 theme,
+                t: t,
                 title: 'Live Camera',
                 subtitle: 'Auto-detect & snap the card',
                 icon: Icons.videocam_rounded,
-                gradientColors: [const Color(0xFF6A1B9A), const Color(0xFF283593)],
+                gradientColors: [t.accent, t.accentDark],
                 onTap: _openLiveCamera,
                 delay: 0.ms,
                 badge: 'RECOMMENDED',
               ),
+              const SizedBox(height: 20),
             ],
             _buildOptionCard(
               theme,
+              t: t,
               title: 'From Gallery',
               subtitle: 'Choose one or multiple card images',
               icon: Icons.photo_library_rounded,
-              gradientColors: [const Color(0xFF1565C0), const Color(0xFF0D47A1)],
+              gradientColors: [t.accent, t.accentDark],
               onTap: () => _pickImage(ImageSource.gallery),
               delay: 200.ms,
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -239,6 +245,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Widget _buildOptionCard(
     ThemeData theme, {
+    required KardoTokens t,
     required String title,
     required String subtitle,
     required IconData icon,
@@ -272,10 +279,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: t.textOnAccent.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: Colors.white, size: 28),
+              child: Icon(icon, color: t.textOnAccent, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -286,8 +293,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: t.textOnAccent,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
@@ -297,12 +304,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.amber,
+                            color: t.warning,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             badge,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.black,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
@@ -316,12 +323,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                    style: TextStyle(color: t.textOnAccent.withOpacity(0.8), fontSize: 13),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
+            Icon(Icons.chevron_right, color: t.textOnAccent.withOpacity(0.7), size: 22),
           ],
         ),
       ).animate().fadeIn(delay: delay, duration: 400.ms).slideX(begin: 0.1, duration: 400.ms),
