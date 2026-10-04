@@ -50,6 +50,7 @@ lib/firebase_options.dart
 firebase_options.dart
 google-services.json
 Extracted_Contact_Numbers.csv
+Offline_AI_Results_*.csv
 assets/ai_extracted_cards.csv
 device_log*.txt
 build_log.txt
