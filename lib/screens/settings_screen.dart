@@ -7,6 +7,7 @@ import '../providers/config_provider.dart';
 import '../providers/data_provider.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
+import '../widgets/kardo_components.dart';
 import '../services/google_drive_service.dart';
 import 'export_screen.dart';
 
@@ -100,33 +101,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               context,
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'Dark Mode',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: t.textPrimary,
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      config.isDark
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                      color: t.accent,
                     ),
-                  ),
-                  subtitle: Text(
-                    config.isDark
-                        ? 'Easy on the eyes at night'
-                        : 'Bright and clear for daylight',
-                    style: TextStyle(fontSize: 13, color: t.textSecondary),
-                  ),
-                  secondary: Icon(
-                    config.isDark
-                        ? Icons.dark_mode_rounded
-                        : Icons.light_mode_rounded,
-                    color: t.accent,
-                  ),
-                  value: config.isDark,
-                  activeColor: t.accent,
-                  onChanged: (_) =>
-                      ref.read(configProvider.notifier).toggleTheme(),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Dark Mode',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: t.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            config.isDark
+                                ? 'Easy on the eyes at night'
+                                : 'Bright and clear for daylight',
+                            style: TextStyle(
+                                fontSize: 13, color: t.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    KardoSwitch(
+                      value: config.isDark,
+                      onChanged: (_) =>
+                          ref.read(configProvider.notifier).toggleTheme(),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -638,14 +650,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isLoading = false);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success
-              ? 'Restore successful! Your cards are now loaded.'
-              : GoogleDriveService.lastError ??
-                  'Restore failed or no backup found.'),
-          backgroundColor: success ? t.success : t.error,
-        ),
+      showKardoSnack(
+        context,
+        success
+            ? 'Restore successful! Your cards are now loaded.'
+            : GoogleDriveService.lastError ?? 'Restore failed or no backup found.',
+        kind: success ? KardoSnackKind.success : KardoSnackKind.error,
       );
     }
     if (success) {
@@ -654,8 +664,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _handleBackupNow() async {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-
     if (_currentUser == null) {
       await _handleSignIn();
       if (_currentUser == null) return;
@@ -666,14 +674,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isLoading = false);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success
-              ? 'Backup successful!'
-              : GoogleDriveService.lastError ??
-                  'Backup failed. Please try again.'),
-          backgroundColor: success ? t.success : t.error,
-        ),
+      showKardoSnack(
+        context,
+        success
+            ? 'Backup successful!'
+            : GoogleDriveService.lastError ?? 'Backup failed. Please try again.',
+        kind: success ? KardoSnackKind.success : KardoSnackKind.error,
       );
     }
     if (success) _refreshLastBackupDate();

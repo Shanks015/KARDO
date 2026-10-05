@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/data_provider.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 
 class BatchResultScreen extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>> extractedDataList;
@@ -74,15 +75,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
   }
 
   void _showWarning(String message) {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: t.warning,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    showKardoSnack(context, message, kind: KardoSnackKind.warning);
   }
 
   Future<bool> _saveCurrentCard() async {
@@ -144,10 +137,10 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
       await ref.read(localCardsProvider.notifier).addCard(finalData);
       return true;
     } catch (e) {
+      debugPrint('Batch card save failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save error: $e'), backgroundColor: t.error),
-        );
+        showKardoSnack(context, 'Could not save one of the cards.',
+            kind: KardoSnackKind.error);
       }
       return false;
     } finally {
@@ -166,13 +159,9 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
       );
     } else {
       if (mounted) {
-        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('All ${widget.extractedDataList.length} cards saved!'),
-            backgroundColor: t.success,
-          ),
-        );
+        showKardoSnack(
+            context, 'All ${widget.extractedDataList.length} cards saved!',
+            kind: KardoSnackKind.success);
         Navigator.pop(context);
       }
     }

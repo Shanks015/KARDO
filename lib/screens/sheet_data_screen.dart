@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
-import '../theme/liquid_glass_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
+import '../widgets/kardo_components.dart';
 import '../widgets/zoomable_image_viewer.dart';
 import 'contact_detail_screen.dart';
+import 'export_screen.dart';
 
 class SheetDataScreen extends ConsumerStatefulWidget {
   const SheetDataScreen({super.key});
@@ -33,11 +34,6 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   // For carousel/gallery view
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _carouselIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -79,7 +75,6 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dataState = ref.watch(sheetDataProvider);
@@ -87,10 +82,19 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
     return Scaffold(
       backgroundColor: t.scaffoldBackground,
       appBar: IOSNavBar(
-        title: 'My Contacts',
+        title: 'Library',
         showBackButton: false,
         actions: [
           IconButton(
+            tooltip: 'Export',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ExportScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
               ref.read(localCardsProvider.notifier).loadCards();
@@ -179,8 +183,14 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
             // Content area
             Expanded(
               child: dataState.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e', textAlign: TextAlign.center)),
+                loading: () => Center(
+                  child: CircularProgressIndicator(color: t.accent),
+                ),
+                error: (e, _) => KardoErrorState(
+                  message: 'Your contacts could not be loaded.',
+                  onRetry: () =>
+                      ref.read(localCardsProvider.notifier).loadCards(),
+                ),
                 data: (rawData) {
                   final cards = rawData
                       .whereType<Map<String, dynamic>>()
@@ -695,21 +705,13 @@ class _SheetDataScreenState extends ConsumerState<SheetDataScreen>
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.credit_card_off_rounded, size: 72, color: t.textTertiary),
-          const SizedBox(height: 16),
-          Text(
-            _searchQuery.isNotEmpty ? 'No matching contacts' : 'No contacts yet',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: t.textTertiary),
-          ),
-          const SizedBox(height: 8),
-          Text('Scan a business card to get started', style: TextStyle(color: t.textTertiary)),
-        ],
-      ),
+    final isSearch = _searchQuery.isNotEmpty || _selectedFilter != 'All';
+    return KardoEmptyState(
+      icon: isSearch ? Icons.search_off_rounded : Icons.credit_card_off_rounded,
+      title: isSearch ? 'No matching contacts' : 'No contacts yet',
+      message: isSearch
+          ? 'Try a different name, company or filter.'
+          : 'Scan a business card and it will show up here.',
     );
   }
 }

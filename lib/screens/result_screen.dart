@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> extractedData;
@@ -93,26 +93,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
-  void _checkMissingFields() {
-    final person = _controllers['point_person']?.text.trim() ?? '';
-    final org = _controllers['organization_name']?.text.trim() ?? '';
-    if (person.isEmpty && mounted) {
-      _showWarning('👤 Name not detected — please fill it in manually');
-    } else if (org.isEmpty && mounted) {
-      _showWarning('🏢 Organization not detected — please fill it in manually');
-    }
-  }
-
   void _showWarning(String message) {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: t.warning,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    showKardoSnack(context, message, kind: KardoSnackKind.warning);
   }
 
   @override
@@ -218,10 +200,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         }
       }
     } catch (e) {
+      debugPrint('Card save failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save error: $e'), backgroundColor: Colors.red),
-        );
+        showKardoSnack(context, 'Could not save the card. Please try again.',
+            kind: KardoSnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -471,13 +453,5 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ],
       ),
     );
-  }
-}
-extension _IndexedMap<T> on Iterable<T> {
-  Iterable<R> mapIndexed<R>(R Function(int index, T element) f) sync* {
-    int i = 0;
-    for (final element in this) {
-      yield f(i++, element);
-    }
   }
 }

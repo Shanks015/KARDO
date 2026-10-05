@@ -5,6 +5,7 @@ import '../services/export_service.dart';
 import '../services/local_db_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
+import '../widgets/kardo_components.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_file/open_file.dart';
 
@@ -351,7 +352,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   Future<void> _export(String format) async {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     setState(() {
       _isExporting = true;
       _exportingFormat = format;
@@ -430,23 +430,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Export failed: File not found'),
-                backgroundColor: t.error,
-              ),
-            );
+            showKardoSnack(context, 'Export failed — file not found.',
+                kind: KardoSnackKind.error);
           }
         }
       }
     } catch (e) {
+      debugPrint('Export failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Export failed: $e'),
-            backgroundColor: t.error,
-          ),
-        );
+        showKardoSnack(context, 'Export failed. Please try again.',
+            kind: KardoSnackKind.error);
       }
     } finally {
       if (mounted) {

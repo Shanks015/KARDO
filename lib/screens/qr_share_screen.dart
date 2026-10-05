@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../services/nfc_service.dart';
 import '../services/image_processor_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 
 class QrShareScreen extends StatefulWidget {
   final Map<String, dynamic> card;
@@ -61,17 +61,14 @@ class _QrShareScreenState extends State<QrShareScreen> {
       setState(() => _savedPath = path);
 
       if (mounted) {
-        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('QR code saved!'), backgroundColor: t.success),
-        );
+        showKardoSnack(context, 'QR code saved!',
+            kind: KardoSnackKind.success);
       }
     } catch (e) {
+      debugPrint('QR save failed: $e');
       if (mounted) {
-        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: t.error),
-        );
+        showKardoSnack(context, 'Could not save the QR code.',
+            kind: KardoSnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -85,14 +82,13 @@ class _QrShareScreenState extends State<QrShareScreen> {
     try {
       await Share.shareXFiles(
         [XFile(_savedPath!)],
-        text: 'Contact card for ${_getField("point_person")} — scan this QR code to save the contact!',
+        text: 'Contact card for ${_getField("point_person")} - scan this QR code to save the contact!',
       );
     } catch (e) {
+      debugPrint('QR share failed: $e');
       if (mounted) {
-        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Share failed: $e'), backgroundColor: t.error),
-        );
+        showKardoSnack(context, 'Sharing is not available right now.',
+            kind: KardoSnackKind.error);
       }
     }
   }
@@ -101,11 +97,10 @@ class _QrShareScreenState extends State<QrShareScreen> {
     try {
       await Share.share(_vcardData, subject: 'Contact: ${_getField("point_person")}');
     } catch (e) {
+      debugPrint('vCard share failed: $e');
       if (mounted) {
-        final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Share failed: $e'), backgroundColor: t.error),
-        );
+        showKardoSnack(context, 'Sharing is not available right now.',
+            kind: KardoSnackKind.error);
       }
     }
   }

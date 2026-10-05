@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/nfc_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 import '../widgets/zoomable_image_viewer.dart';
 import 'qr_share_screen.dart';
 
@@ -97,9 +98,8 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
     final isAvailable = await NfcService.isNfcAvailable();
     if (!mounted) return;
     if (!isAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('NFC is not available on this device')),
-      );
+      showKardoSnack(context, 'NFC is not available on this device',
+          kind: KardoSnackKind.warning);
       return;
     }
 
@@ -122,8 +122,6 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
     final url = _getField('url');
     final location = _getField('location').isNotEmpty ? _getField('location') : _getField('address');
     final imagePath = card['image_path']?.toString() ?? '';
-
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: t.scaffoldBackground,
@@ -334,25 +332,19 @@ class _ContactDetailScreenState extends ConsumerState<ContactDetailScreen> {
       try {
         await newContact.insert();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saved directly to your contacts!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showKardoSnack(context, 'Saved directly to your contacts!',
+              kind: KardoSnackKind.success);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save contact: $e'), backgroundColor: Colors.red),
-          );
+          showKardoSnack(context, 'Failed to save the contact.',
+              kind: KardoSnackKind.error);
         }
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission denied to access contacts'), backgroundColor: Colors.orange),
-        );
+        showKardoSnack(context, 'Permission denied to access contacts',
+            kind: KardoSnackKind.warning);
       }
     }
   }

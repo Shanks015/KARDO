@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/google_drive_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,16 +45,16 @@ class _LoginScreenState extends State<LoginScreen> {
       // HomeScreen, leaving a stale screen above LoginScreen after
       // sign-out (looked like random forced re-logins).
     } on FirebaseAuthException catch (e) {
+      debugPrint('Sign-in failed: ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to sign in: ${e.message}')),
-        );
+        showKardoSnack(context, 'Failed to sign in. Please try again.',
+            kind: KardoSnackKind.error);
       }
     } catch (e) {
+      debugPrint('Sign-in error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
-        );
+        showKardoSnack(context, 'Something went wrong. Please try again.',
+            kind: KardoSnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

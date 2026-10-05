@@ -100,10 +100,6 @@ class OfflineTransformerService {
         return {};
       }
 
-      // Prepare input tensor - shape should match model's expected input
-      // Most NER models expect: [batch_size, sequence_length]
-      final List<List<int>> input = [tokens];
-
       // Get expected input shape from model
       final inputShape = _interpreter!.getInputTensor(0).shape;
       final int expectedSeqLength = inputShape.length > 1 ? inputShape[1] : 128;

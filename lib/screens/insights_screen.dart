@@ -9,10 +9,21 @@ class InsightsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Scaffold(
+      backgroundColor: t.scaffoldBackground,
       appBar: AppBar(
-        title: const Text("Insights Dashboard"),
+        title: Text(
+          'Insights',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: t.textPrimary,
+          ),
+        ),
+        centerTitle: true,
         elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: _buildInsightsView(context),
     );
