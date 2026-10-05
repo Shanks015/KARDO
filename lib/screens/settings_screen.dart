@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/config_provider.dart';
 import '../providers/data_provider.dart';
 import '../theme/tokens.dart';
@@ -20,7 +19,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const String _appVersion = '2.0.0';
-  static const String _repoUrl = 'https://github.com/Shanks015/KARDO';
 
   GoogleSignInAccount? _currentUser;
   String _backupFrequency = 'Never';
@@ -346,56 +344,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         _appVersion,
                         style: TextStyle(
                             fontSize: 14, color: t.textTertiary),
-                      ),
-                    ),
-                    const Divider(height: 24),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      leading: Icon(Icons.description_outlined,
-                          color: t.accent, size: 22),
-                      title: Text(
-                        'Open-source Licenses',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: t.textPrimary,
-                        ),
-                      ),
-                      trailing: Icon(Icons.chevron_right_rounded,
-                          color: t.textTertiary),
-                      onTap: () => showLicensePage(
-                        context: context,
-                        applicationName: 'Kardo',
-                        applicationVersion: _appVersion,
-                        applicationLegalese:
-                            'Business card scanner & mini CRM',
-                      ),
-                    ),
-                    const Divider(height: 24),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      leading: Icon(Icons.code_rounded,
-                          color: t.accent, size: 22),
-                      title: Text(
-                        'Source Code',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: t.textPrimary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'github.com/Shanks015/KARDO',
-                        style: TextStyle(
-                            fontSize: 12, color: t.textSecondary),
-                      ),
-                      trailing: Icon(Icons.open_in_new_rounded,
-                          color: t.textTertiary, size: 18),
-                      onTap: () => launchUrl(
-                        Uri.parse(_repoUrl),
-                        mode: LaunchMode.externalApplication,
                       ),
                     ),
                   ],
