@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
-import '../theme/liquid_glass_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import 'contact_detail_screen.dart';
@@ -11,7 +10,6 @@ import 'scanner_screen.dart';
 import 'settings_screen.dart';
 import 'sheet_data_screen.dart';
 import 'export_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -110,11 +108,6 @@ class _HomeViewState extends ConsumerState<_HomeView> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'Guest User';
-    final email = user?.email ?? '';
-    final initial =
-        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'V';
 
     final cardsState = ref.watch(localCardsProvider);
 
@@ -137,7 +130,6 @@ class _HomeViewState extends ConsumerState<_HomeView> {
               type.contains(_searchQuery);
         }).toList();
 
-        final totalCards = cards.length;
         final recentCards = filteredCards.take(3).toList();
 
         // Count by type
@@ -152,14 +144,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
           slivers: [
             // Header with translucent blurred background
             SliverToBoxAdapter(
-              child: _buildHeader(
-                context,
-                initial,
-                displayName,
-                email,
-                isDark,
-                t,
-              ),
+              child: _buildHeader(context, t),
             ),
             SliverToBoxAdapter(
               child: const SizedBox(height: 24),
@@ -261,12 +246,15 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final card = recentCards[index];
-                          return _buildRecentCard(
-                            context,
-                            card,
-                            index,
-                            isDark,
-                            t,
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildRecentCard(
+                              context,
+                              card,
+                              index,
+                              isDark,
+                              t,
+                            ),
                           );
                         },
                         childCount: recentCards.length,
@@ -311,62 +299,34 @@ class _HomeViewState extends ConsumerState<_HomeView> {
     );
   }
 
-  Widget _buildHeader(
-      BuildContext context,
-      String initial,
-      String displayName,
-      String email,
-      bool isDark,
-      KardoTokens t) {
+  Widget _buildHeader(BuildContext context, KardoTokens t) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              // Circular avatar with background color
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: t.surfaceBackground,
-                ),
-                child: Center(
-                  child: Text(
-                    initial,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: t.textPrimary,
-                    ),
-                  ),
-                ),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: t.accent.withOpacity(0.12),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.contact_page_rounded,
+                color: t.accent,
+                size: 24,
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: t.textPrimary,
-                    ),
-                  ),
-                  if (email.isNotEmpty)
-                    Text(
-                      email,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: t.textSecondary,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Kardo Scan',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: t.textPrimary,
+            ),
           ),
         ],
       ),
@@ -382,9 +342,6 @@ class _HomeViewState extends ConsumerState<_HomeView> {
     final dominantColor =
         ImageProcessorService.hexToColor(card['dominant_color']?.toString() ??
             '0xFF1565C0');
-    final secondaryColor =
-        ImageProcessorService.hexToColor(card['dominant_color_secondary']?.toString() ??
-            '0xFF0D47A1');
     final name = _field(card, 'point_person');
     final role = _field(card, 'department');
     final org = _field(card, 'organization_name');
@@ -400,10 +357,10 @@ class _HomeViewState extends ConsumerState<_HomeView> {
       },
       child: GlassmorphismContainer.fromTheme(
         context,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Thumbnail / Placeholder with squircle clipping
               ClipRRect(
@@ -453,8 +410,8 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                           ),
                         ),
                         Icon(
-                          Icons.reply_rounded,
-                          color: t.accent.withOpacity(0.5),
+                          Icons.chevron_right_rounded,
+                          color: t.textTertiary,
                           size: 20,
                         ),
                       ],
