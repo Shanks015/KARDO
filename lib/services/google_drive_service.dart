@@ -113,6 +113,16 @@ class GoogleDriveService {
       encoder.addFile(dbFile);
     }
 
+    // Ship the encryption key alongside the DB — without it a restore on a
+    // new device leaves an unreadable database (photos and cards all lost).
+    const storage = FlutterSecureStorage();
+    final dbKey = await storage.read(key: 'db_encryption_key');
+    if (dbKey != null && dbKey.isNotEmpty) {
+      final keyFile = File(p.join(tempDir.path, 'encryption_key.txt'));
+      await keyFile.writeAsString(dbKey);
+      encoder.addFile(keyFile);
+    }
+
     // Add cards directory (images)
     final appDir = await getApplicationDocumentsDirectory();
     final cardsDir = Directory(p.join(appDir.path, 'cards'));
@@ -215,7 +225,6 @@ class GoogleDriveService {
       
       final dbDir = await getDatabasesPath();
       final appDir = await getApplicationDocumentsDirectory();
-      final cardsDir = Directory(p.join(appDir.path, 'cards'));
 
       for (final file in archive) {
         final filename = file.name;

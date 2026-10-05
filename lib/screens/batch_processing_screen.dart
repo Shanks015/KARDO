@@ -57,9 +57,12 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
         };
         extractedList.add(cardData);
       } catch (e) {
-        // Just add empty data with the image if it failed to process entirely
+        // Copy the image into cards/ so it survives backup even when
+        // extraction failed — raw camera paths live in cache and vanish.
+        final fallbackPath =
+            await ImageProcessorService.saveCardImage(xFile.path);
         extractedList.add({
-          'image_path': xFile.path,
+          'image_path': fallbackPath,
           'dominant_color': '0xFF1565C0',
           'dominant_color_secondary': '0xFF1565C0',
           'kanban_status': 'New Lead',
