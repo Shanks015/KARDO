@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/google_drive_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/kardo_components.dart';
@@ -82,8 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Kardo',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 32,
+                style: t.headlineLarge.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -1.0,
                   color: t.textPrimary,
@@ -93,8 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Business cards, reimagined.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
+                style: t.bodyMedium.copyWith(
                   color: t.textSecondary,
                 ),
               ),
@@ -127,8 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 12),
                       Text(
                         'Continue with Google',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
+                        style: t.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),

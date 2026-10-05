@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../providers/data_provider.dart';
 import '../theme/tokens.dart';
 import '../widgets/kardo_components.dart';
@@ -342,7 +341,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: t.grey, letterSpacing: 1.2),
+          style: t.labelMedium.copyWith(fontWeight: FontWeight.bold, color: t.grey, letterSpacing: 1.2),
       ),
     );
   }
@@ -367,7 +366,7 @@ class _BatchResultScreenState extends ConsumerState<BatchResultScreen> {
       child: TextFormField(
         controller: controllers[key],
         maxLines: maxLines,
-        style: GoogleFonts.inter(fontSize: 14),
+          style: t.bodySmall,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: t.grey, fontSize: 13),
