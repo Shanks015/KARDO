@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/local_db_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/ios_components.dart';
+import '../widgets/kardo_components.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -12,60 +14,36 @@ class InsightsScreen extends ConsumerWidget {
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     return Scaffold(
       backgroundColor: t.scaffoldBackground,
-      appBar: AppBar(
-        title: Text(
-          'Insights',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: t.textPrimary,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+      appBar: const IOSNavBar(
+        title: 'Insights',
+        showBackButton: false,
       ),
       body: _buildInsightsView(context),
     );
   }
 
   Widget _buildInsightsView(BuildContext context) {
-    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                t.cardBackground,
-                t.accentLight,
-              ],
-            ),
-          ),
-        ),
-        SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatsSection(context),
-                const SizedBox(height: 32),
-                _buildOrganizationTypeBreakdown(context),
-                const SizedBox(height: 32),
-                _buildTopOrganizations(context),
-                const SizedBox(height: 32),
-                _buildDepartmentBreakdown(context),
-                const SizedBox(height: 32),
-                _buildContactCompletenessCard(context),
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        KardoSpacing.screen,
+        KardoSpacing.sm,
+        KardoSpacing.screen,
+        KardoSpacing.xl,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatsSection(context),
+          const SizedBox(height: KardoSpacing.xl),
+          _buildOrganizationTypeBreakdown(context),
+          const SizedBox(height: KardoSpacing.xl),
+          _buildTopOrganizations(context),
+          const SizedBox(height: KardoSpacing.xl),
+          _buildDepartmentBreakdown(context),
+          const SizedBox(height: KardoSpacing.xl),
+          _buildContactCompletenessCard(context),
+        ],
+      ),
     );
   }
 
@@ -77,20 +55,30 @@ class InsightsScreen extends ConsumerWidget {
             ref.watch(localCardsProviderForInsights);
 
         return localCardsState.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('Error: $error')),
+          loading: () => Padding(
+            padding: const EdgeInsets.symmetric(vertical: KardoSpacing.xxl),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context)
+                    .extension<KardoTokensExtension>()!
+                    .tokens
+                    .accent,
+              ),
+            ),
+          ),
+          error: (error, _) => KardoErrorState(
+            message: 'Insights could not be loaded.',
+            onRetry: () => ref.invalidate(localCardsProviderForInsights),
+          ),
           data: (cards) {
             final insights = _computeInsights(cards);
+            final t =
+                Theme.of(context).extension<KardoTokensExtension>()!.tokens;
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Overview',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
+                const KardoSectionHeader('Overview'),
+                const SizedBox(height: KardoSpacing.md),
                 Row(
                   children: [
                     Expanded(
@@ -98,28 +86,28 @@ class InsightsScreen extends ConsumerWidget {
                         context,
                         '${insights['totalCards']}',
                         'Total Cards',
-                        Icons.business_center,
-                        Colors.blueAccent,
+                        Icons.business_center_rounded,
+                        t.accent,
                       ).animate().scale(delay: 0.ms, duration: 400.ms),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: KardoSpacing.md),
                     Expanded(
                       child: _buildStatCard(
                         context,
                         '${insights['organizationCount']}',
                         'Organizations',
-                        Icons.domain,
-                        Colors.greenAccent,
+                        Icons.domain_rounded,
+                        t.success,
                       ).animate().scale(delay: 100.ms, duration: 400.ms),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: KardoSpacing.md),
                     Expanded(
                       child: _buildStatCard(
                         context,
                         '${insights['departmentCount']}',
                         'Departments',
-                        Icons.people,
-                        Colors.purpleAccent,
+                        Icons.people_rounded,
+                        t.info,
                       ).animate().scale(delay: 200.ms, duration: 400.ms),
                     ),
                   ],
@@ -135,35 +123,38 @@ class InsightsScreen extends ConsumerWidget {
   Widget _buildStatCard(BuildContext context, String value, String label,
       IconData icon, Color color) {
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.surfaceBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 2,
+    return GlassmorphismContainer.fromTheme(
+      context,
+      child: Padding(
+        padding: const EdgeInsets.all(KardoSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: KardoSpacing.md),
+            Text(
+              value,
+              style: t.headlineMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: t.textPrimary,
+              ),
+            ),
+            const SizedBox(height: KardoSpacing.xs),
+            Text(
+              label,
+              style: t.bodySmall.copyWith(color: t.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
@@ -190,20 +181,14 @@ class InsightsScreen extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Cards by Organization Type',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
+                const KardoSectionHeader('Cards by Organization Type'),
+                const SizedBox(height: KardoSpacing.md),
                 ...orgTypeMap.entries.map((entry) {
                   final percentage =
                       (entry.value / insights['totalCards'] * 100)
                           .toStringAsFixed(1);
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: KardoSpacing.md),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -213,21 +198,17 @@ class InsightsScreen extends ConsumerWidget {
                           children: [
                             Text(
                               entry.key,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                              style: t.bodyMedium
+                                  .copyWith(fontWeight: FontWeight.w600),
                             ),
                             Text(
                               '${entry.value} ($percentage%)',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: Colors.grey),
+                              style: t.bodySmall
+                                  .copyWith(color: t.textTertiary),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: KardoSpacing.sm),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: LinearProgressIndicator(
@@ -235,9 +216,8 @@ class InsightsScreen extends ConsumerWidget {
                                 insights['totalCards'],
                             minHeight: 8,
                             backgroundColor: t.surfaceBackground,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(
-                              _getColorForOrgType(entry.key),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _getColorForOrgType(t, entry.key),
                             ),
                           ),
                         ),
@@ -280,14 +260,8 @@ class InsightsScreen extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Top Organizations',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
+                const KardoSectionHeader('Top Organizations'),
+                const SizedBox(height: KardoSpacing.md),
                 ...topOrgs.asMap().entries.map((entry) {
                   final index = entry.key;
                   final org = entry.value;
@@ -296,14 +270,14 @@ class InsightsScreen extends ConsumerWidget {
                       (org['count'] as int) / maxCount * 100;
 
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: KardoSpacing.md),
                     child: Row(
                       children: [
                         Container(
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: _getColorForIndex(index),
+                            color: _getColorForIndex(t, index),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Center(
@@ -316,7 +290,7 @@ class InsightsScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: KardoSpacing.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment:
@@ -324,43 +298,31 @@ class InsightsScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 org['name'] as String,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                        fontWeight: FontWeight.w600),
+                                style: t.bodyMedium
+                                    .copyWith(fontWeight: FontWeight.w600),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: KardoSpacing.xs),
                               ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(4),
-                                child:
-                                  LinearProgressIndicator(
-                                   value: percentage / 100,
-                                   minHeight: 6,
-                                   backgroundColor:
-                                       t.surfaceBackground,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<
-                                          Color>(
-                                    _getColorForIndex(index),
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: percentage / 100,
+                                  minHeight: 6,
+                                  backgroundColor: t.surfaceBackground,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _getColorForIndex(t, index),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: KardoSpacing.sm),
                         Text(
                           '${org['count']}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: t.bodySmall
+                              .copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -405,17 +367,11 @@ class InsightsScreen extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Top Departments',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
+                const KardoSectionHeader('Top Departments'),
+                const SizedBox(height: KardoSpacing.md),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: KardoSpacing.sm,
+                  runSpacing: KardoSpacing.sm,
                   children: displayDepts.map((entry) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
@@ -434,14 +390,10 @@ class InsightsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             entry.key,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: t.bodySmall
+                                .copyWith(fontWeight: FontWeight.w600),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: KardoSpacing.sm),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -449,17 +401,15 @@ class InsightsScreen extends ConsumerWidget {
                             ),
                             decoration: BoxDecoration(
                               color: t.accent,
-                              borderRadius:
-                                  BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               '${entry.value}',
-                              style:
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -501,55 +451,50 @@ class InsightsScreen extends ConsumerWidget {
               return const SizedBox.shrink();
             }
 
-            return Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: t.surfaceBackground,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: t.warning.withOpacity(0.3),
-                  width: 2,
+            return GlassmorphismContainer.fromTheme(
+              context,
+              child: Padding(
+                padding: const EdgeInsets.all(KardoSpacing.xl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Contact Completeness',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: t.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: KardoSpacing.xl),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildCircularStat(
+                          context,
+                          withBoth,
+                          totalCards,
+                          'Email & Phone',
+                          t.success,
+                        ),
+                        _buildCircularStat(
+                          context,
+                          withEmail,
+                          totalCards,
+                          'Email Only',
+                          t.accent,
+                        ),
+                        _buildCircularStat(
+                          context,
+                          withPhone,
+                          totalCards,
+                          'Phone Only',
+                          t.info,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Contact Completeness',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildCircularStat(
-                        context,
-                        withBoth,
-                        totalCards,
-                        'Email & Phone',
-                        Colors.greenAccent,
-                      ),
-                      _buildCircularStat(
-                        context,
-                        withEmail,
-                        totalCards,
-                        'Email Only',
-                        Colors.blueAccent,
-                      ),
-                      _buildCircularStat(
-                        context,
-                        withPhone,
-                        totalCards,
-                        'Phone Only',
-                        Colors.purpleAccent,
-                      ),
-                    ],
-                  ),
-                ],
               ),
             )
                 .animate()
@@ -691,25 +636,25 @@ class InsightsScreen extends ConsumerWidget {
     };
   }
 
-  Color _getColorForOrgType(String type) {
+  Color _getColorForOrgType(KardoTokens t, String type) {
     final colors = {
-      'UNIVERSITY': Colors.blueAccent,
-      'BUSINESS': Colors.greenAccent,
-      'CONSULTANCY': Colors.orangeAccent,
-      'NGO': Colors.purpleAccent,
-      'STARTUP': Colors.redAccent,
-      'GOVERNMENT': Colors.indigoAccent,
+      'UNIVERSITY': t.accent,
+      'BUSINESS': t.success,
+      'CONSULTANCY': t.warning,
+      'NGO': t.kanbanFollowedUp,
+      'STARTUP': t.error,
+      'GOVERNMENT': t.info,
     };
-    return colors[type] ?? Colors.blueAccent;
+    return colors[type] ?? t.accent;
   }
 
-  Color _getColorForIndex(int index) {
+  Color _getColorForIndex(KardoTokens t, int index) {
     final colors = [
-      Colors.blueAccent,
-      Colors.greenAccent,
-      Colors.orangeAccent,
-      Colors.purpleAccent,
-      Colors.redAccent,
+      t.accent,
+      t.success,
+      t.warning,
+      t.info,
+      t.kanbanContacted,
     ];
     return colors[index % colors.length];
   }

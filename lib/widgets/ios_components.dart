@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/liquid_glass_theme.dart';
 import '../theme/tokens.dart';
 
@@ -484,7 +485,9 @@ class IOSNavBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// iOS-style tab bar
-class IOSBottomNavBar extends StatelessWidget {
+/// iOS-style tab bar: soft selection pill behind the icon, no Material
+/// ink ripple, press-to-shrink feedback like UIKit's tab items.
+class IOSBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
   final List<BottomNavigationBarItem> items;
@@ -495,6 +498,17 @@ class IOSBottomNavBar extends StatelessWidget {
     required this.onTap,
     required this.items,
   }) : super(key: key);
+
+  @override
+  State<IOSBottomNavBar> createState() => _IOSBottomNavBarState();
+}
+
+class _IOSBottomNavBarState extends State<IOSBottomNavBar> {
+  int? _pressedIndex;
+
+  void _handleTapUp() {
+    if (_pressedIndex != null) setState(() => _pressedIndex = null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -515,20 +529,75 @@ class IOSBottomNavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: onTap,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: t.accent,
-        unselectedItemColor: t.textTertiary,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        iconSize: 28,
-        selectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 13),
-        items: items,
+      child: Row(
+        children: [
+          for (int i = 0; i < widget.items.length; i++)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  if (_pressedIndex != i) setState(() => _pressedIndex = i);
+                },
+                onTapUp: (_) => _handleTapUp(),
+                onTapCancel: _handleTapUp,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  widget.onTap(i);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedScale(
+                        scale: _pressedIndex == i ? 0.86 : 1.0,
+                        duration: Duration(
+                          milliseconds: _pressedIndex == i ? 90 : 220,
+                        ),
+                        curve: Curves.easeOut,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeOut,
+                          width: 46,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: widget.currentIndex == i
+                                ? t.accentLight
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: IconTheme(
+                            data: IconThemeData(
+                              size: 23,
+                              color: widget.currentIndex == i
+                                  ? t.accent
+                                  : t.textTertiary,
+                            ),
+                            child: widget.items[i].icon,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOut,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: widget.currentIndex == i
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: widget.currentIndex == i
+                              ? t.accent
+                              : t.textTertiary,
+                        ),
+                        child: Text(widget.items[i].label ?? ''),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
