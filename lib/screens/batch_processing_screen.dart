@@ -49,7 +49,7 @@ class _BatchProcessingScreenState extends ConsumerState<BatchProcessingScreen> {
         data ??= await LocalTransformerService.extractCard(processedXFile);
 
         final cardData = {
-          ...data,
+          ...?data,
           'image_path': savedImagePath,
           'dominant_color': ImageProcessorService.colorToHex(processed.dominantColor),
           'dominant_color_secondary': ImageProcessorService.colorToHex(processed.dominantColorSecondary),

@@ -5,6 +5,7 @@ import '../providers/data_provider.dart';
 import '../services/image_processor_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
+import '../widgets/kardo_components.dart';
 import 'contact_detail_screen.dart';
 import 'scanner_screen.dart';
 import 'settings_screen.dart';
@@ -253,15 +254,16 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       ),
                     )
                   : SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Text(
-                            'No scans yet',
-                            style: TextStyle(
-                              color: t.textSecondary,
-                            ),
-                          ),
+                      child: KardoEmptyState(
+                        icon: Icons.document_scanner_rounded,
+                        title: 'No scans yet',
+                        message:
+                            'Scan your first business card and it will show up here.',
+                        actionLabel: 'Scan Card',
+                        onAction: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ScannerScreen()),
                         ),
                       ),
                     ),
@@ -272,19 +274,26 @@ class _HomeViewState extends ConsumerState<_HomeView> {
           ],
         );
       },
-      loading: () => const CustomScrollView(
+      loading: () => CustomScrollView(
         slivers: [
+          SliverToBoxAdapter(child: _buildHeader(context, t)),
           SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(
+              child: CircularProgressIndicator(color: t.accent),
+            ),
           ),
         ],
       ),
       error: (error, stack) => CustomScrollView(
         slivers: [
+          SliverToBoxAdapter(child: _buildHeader(context, t)),
           SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: Text('Error: $error')),
+            child: KardoErrorState(
+              message: 'Your cards could not be loaded.',
+              onRetry: () => ref.invalidate(localCardsProvider),
+            ),
           ),
         ],
       ),
@@ -338,6 +347,9 @@ class _HomeViewState extends ConsumerState<_HomeView> {
     final role = _field(card, 'department');
     final org = _field(card, 'organization_name');
     final imagePath = card['image_path']?.toString() ?? '';
+    final location = _field(card, 'location');
+    final phone = _field(card, 'contact_number');
+    final email = _field(card, 'contact_email');
 
     return GestureDetector(
       onTap: () {
@@ -420,65 +432,66 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    Row(
-                      children: [
-                         Icon(Icons.location_on,
-                            size: 12, color: t.textTertiary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            card['location']?.toString().isNotEmpty == true
-                                ? card['location']!
-                                : 'Paris, 24 Street Avenue', // Mockup dummy text fallback
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: t.textSecondary,
+                    if (location.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on,
+                                size: 12, color: t.textTertiary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                location,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: t.textSecondary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                         Icon(Icons.phone,
-                            size: 12, color: t.textTertiary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            card['contact_number']?.toString().isNotEmpty == true
-                                ? card['contact_number']!
-                                : '+971 453 644 14',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: t.textSecondary,
+                      ),
+                    if (phone.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          children: [
+                            Icon(Icons.phone,
+                                size: 12, color: t.textTertiary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                phone,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: t.textSecondary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                         Icon(Icons.email,
-                            size: 12, color: t.textTertiary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            card['contact_email']?.toString().isNotEmpty == true
-                                ? card['contact_email']!
-                                : 'not.provided@example.com',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: t.textSecondary,
+                      ),
+                    if (email.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(Icons.email,
+                              size: 12, color: t.textTertiary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: t.textSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ),

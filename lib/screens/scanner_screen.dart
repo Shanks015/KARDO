@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import '../services/groq_service.dart';
 import '../services/local_transformer_service.dart';
 import '../services/image_processor_service.dart';
 import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 import 'result_screen.dart';
 import 'batch_processing_screen.dart';
 import 'camera_screen.dart';
@@ -24,7 +24,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isProcessing = false;
   String _processingStep = '';
-  String? _capturedImagePath;
 
   bool get _supportsCamera =>
       !kIsWeb &&
@@ -33,9 +32,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Future<void> _openLiveCamera() async {
     if (!_supportsCamera) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Live camera is not available on this platform.')),
-      );
+      showKardoSnack(context, 'Live camera is not available on this platform.',
+          kind: KardoSnackKind.warning);
       return;
     }
     final result = await Navigator.push<dynamic>(
@@ -56,9 +54,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     if (source == ImageSource.camera && !_supportsCamera) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Camera capture is not available on this platform.')),
-      );
+      showKardoSnack(context, 'Camera capture is not available on this platform.',
+          kind: KardoSnackKind.warning);
       return;
     }
 
@@ -84,7 +81,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Future<void> _processImage(XFile xFile) async {
     setState(() {
-      _capturedImagePath = xFile.path;
       _isProcessing = true;
       _processingStep = 'Processing image...';
     });
@@ -119,9 +115,23 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         debugPrint("ScannerScreen: Used local transformer OCR fallback");
       }
 
+      if (result == null) {
+        if (mounted) {
+          showKardoSnack(
+            context,
+            'Could not read the card. Try a sharper, well-lit photo.',
+            kind: KardoSnackKind.error,
+          );
+        }
+        return;
+      }
+
+      // Promote to an effectively-final local: nullable locals lose their
+      // null-promotion inside the builder closure below.
+      final cardData = result;
       final captureTime = DateTime.now().toIso8601String();
-      result['timestamp'] = captureTime;
-      result['created_at'] = captureTime;
+      cardData['timestamp'] = captureTime;
+      cardData['created_at'] = captureTime;
 
       // Step 3: Save card image permanently
       setState(() => _processingStep = 'Saving card image...');
@@ -132,7 +142,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           context,
           MaterialPageRoute(
             builder: (c) => ResultScreen(
-              extractedData: result!,
+              extractedData: cardData,
               xFile: processedXFile, // Use the processed image here as well
               savedImagePath: savedImagePath,
               dominantColor: processed.dominantColor,
@@ -142,10 +152,10 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         );
       }
     } catch (e) {
+      debugPrint('ScannerScreen processing failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        showKardoSnack(context, 'Processing failed. Please try again.',
+            kind: KardoSnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -156,11 +166,18 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: t.scaffoldBackground,
       appBar: AppBar(
-        title: const Text('Scan Business Card'),
+        title: Text(
+          'Scan Card',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: t.textPrimary,
+          ),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -185,7 +202,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Processing card info...',
+            _processingStep.isEmpty ? 'Processing card info...' : _processingStep,
+            textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface,
             ),

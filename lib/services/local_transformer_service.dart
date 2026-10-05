@@ -86,10 +86,14 @@ class LocalTransformerService {
     'ca.', 'ca ', 'er.', 'er '
   ];
 
-  static Future<Map<String, dynamic>> extractCard(dynamic imageFile) async {
+  static Future<Map<String, dynamic>?> extractCard(dynamic imageFile) async {
     final bool isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    // Unit tests exercise the parser against canned data.
+    if (isTest) return _getMockData();
     final bool isMobile = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
-    if (isTest || !isMobile) return _getMockData();
+    // ML Kit needs a mobile platform — returning null instead of canned
+    // cards keeps desktop runs from saving fake people to the real DB.
+    if (!isMobile) return null;
 
     try {
       final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);

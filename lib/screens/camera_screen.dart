@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
+import '../theme/tokens.dart';
+import '../widgets/kardo_components.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -32,9 +34,8 @@ class _CameraScreenState extends State<CameraScreen> {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No camera found on this device')),
-          );
+          showKardoSnack(context, 'No camera found on this device',
+              kind: KardoSnackKind.warning);
           Navigator.pop(context);
         }
         return;
@@ -63,9 +64,8 @@ class _CameraScreenState extends State<CameraScreen> {
     } catch (e) {
       debugPrint('Camera init error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Camera error: $e')),
-        );
+        showKardoSnack(context, 'Camera could not be started.',
+            kind: KardoSnackKind.error);
         Navigator.pop(context);
       }
     }
@@ -123,9 +123,8 @@ class _CameraScreenState extends State<CameraScreen> {
       debugPrint('Capture error: $e');
       if (mounted) {
         setState(() => _isCapturing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Capture failed: $e')),
-        );
+        showKardoSnack(context, 'Capture failed. Please try again.',
+            kind: KardoSnackKind.error);
       }
     }
   }
@@ -161,6 +160,7 @@ class _CameraScreenState extends State<CameraScreen> {
     }
 
     final size = MediaQuery.of(context).size;
+    final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -232,7 +232,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           child: Text(
                             'Single Mode',
                             style: TextStyle(
-                              color: !_isBatchMode ? const Color(0xFF536DFE) : Colors.white,
+                              color: !_isBatchMode ? t.accent : Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
@@ -250,7 +250,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           child: Text(
                             'Batch Mode',
                             style: TextStyle(
-                              color: _isBatchMode ? const Color(0xFF536DFE) : Colors.white,
+                              color: _isBatchMode ? t.accent : Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
@@ -336,7 +336,7 @@ class _CameraScreenState extends State<CameraScreen> {
                               icon: const Icon(Icons.check_circle_rounded),
                               label: Text('Done (${_batchPhotos.length})'),
                               style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF536DFE),
+                                backgroundColor: t.accent,
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               ),
                             ),
