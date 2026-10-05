@@ -1,6 +1,4 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tokens.dart';
 
@@ -11,7 +9,6 @@ class LiquidGlassTheme {
 
   // ── Light Colors ──
   static const Color _lightScaffold = Color(0xFFF0F4FF);
-  static const Color _lightScaffoldBottom = Color(0xFFE8F0FE);
   static const Color _lightCard = Color(0xA6FFFFFF); // 65% white
   static const Color _lightCardBorder = Color(0x14000000); // 8% black
   static const Color _lightTextPrimary = Color(0xFF1D1D1F);
@@ -65,12 +62,6 @@ class LiquidGlassTheme {
   static const double _mediumRadius = 16.0;
   static const double _largeRadius = 22.0;
   static const double _extraLargeRadius = 30.0;
-
-  // ── Static accessors for main.dart compatibility ──
-  static Color get iceBlue => _lightScaffold;
-  static const Color deepMidnightNavy = Color(0xFF1D1D1F);
-  static const Color mediumBlue = Color(0xFF007AFF);
-  static const Color coralPeach = Color(0xFFFF7054);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOKEN DEFINITIONS
@@ -437,13 +428,12 @@ class GlassmorphismExtension extends ThemeExtension<GlassmorphismExtension> {
 
   @override
   GlassmorphismExtension lerp(covariant GlassmorphismExtension other, double t) {
-    if (other is! GlassmorphismExtension) return this;
     return GlassmorphismExtension(
-      config: GlassmorphismConfig.lerp(config, other.config, t)!,
-      smallRadius: _lerpDouble(smallRadius, other.smallRadius, t) ?? smallRadius,
-      mediumRadius: _lerpDouble(mediumRadius, other.mediumRadius, t) ?? mediumRadius,
-      largeRadius: _lerpDouble(largeRadius, other.largeRadius, t) ?? largeRadius,
-      extraLargeRadius: _lerpDouble(extraLargeRadius, other.extraLargeRadius, t) ?? extraLargeRadius,
+      config: GlassmorphismConfig.lerp(config, other.config, t),
+      smallRadius: _lerpDouble(smallRadius, other.smallRadius, t),
+      mediumRadius: _lerpDouble(mediumRadius, other.mediumRadius, t),
+      largeRadius: _lerpDouble(largeRadius, other.largeRadius, t),
+      extraLargeRadius: _lerpDouble(extraLargeRadius, other.extraLargeRadius, t),
     );
   }
 }

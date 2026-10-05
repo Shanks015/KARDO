@@ -116,6 +116,18 @@ class KardoTokens {
   Color get border => borderDefault;
 }
 
+/// Spacing scale — every margin, gap and padding snaps to these values.
+/// Screen-level horizontal margin is [screen]; card padding is [lg].
+class KardoSpacing {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double xxl = 32;
+  static const double screen = 24;
+}
+
 /// ThemeExtension that makes KardoTokens accessible via Theme.of(context)
 class KardoTokensExtension extends ThemeExtension<KardoTokensExtension> {
   final KardoTokens tokens;

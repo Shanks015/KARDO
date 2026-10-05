@@ -117,7 +117,7 @@ class Squircles {
 }
 
 /// iOS-style recessed search field
-class IOSSearchBar extends StatelessWidget {
+class IOSSearchBar extends StatefulWidget {
   final String hintText;
   final ValueChanged<String>? onChanged;
   final String? initialValue;
@@ -132,9 +132,34 @@ class IOSSearchBar extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<IOSSearchBar> createState() => _IOSSearchBarState();
+}
+
+class _IOSSearchBarState extends State<IOSSearchBar> {
+  late final TextEditingController _internalController;
+  late final TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // An internally-owned controller must survive rebuilds, otherwise the
+    // field loses focus and caret position on every parent setState.
+    _internalController =
+        TextEditingController(text: widget.initialValue ?? '');
+    _controller = widget.controller ?? _internalController;
+  }
+
+  @override
+  void dispose() {
+    _internalController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = _tokens(context);
-    final controllerToUse = controller ?? TextEditingController(text: initialValue ?? '');
 
     return Container(
       decoration: BoxDecoration(
@@ -150,14 +175,16 @@ class IOSSearchBar extends StatelessWidget {
         ],
       ),
       child: TextField(
-        controller: controllerToUse,
-        onChanged: onChanged,
+        controller: _controller,
+        focusNode: _focusNode,
+        onChanged: widget.onChanged,
         decoration: InputDecoration(
-          hintText: hintText,
+          hintText: widget.hintText,
           hintStyle: TextStyle(color: t.textTertiary, fontSize: 16),
           prefixIcon: Icon(Icons.search, color: t.textTertiary, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           isDense: true,
         ),
         style: TextStyle(color: t.textPrimary, fontSize: 16),
@@ -397,9 +424,10 @@ class IOSListTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              if (trailing != null) ...[trailing!],
+              if (trailing != null && showChevron) const SizedBox(width: 8),
               if (showChevron)
                 Icon(Icons.chevron_right, color: t.textTertiary, size: 20),
-              if (trailing != null && !showChevron) trailing!,
             ],
           ),
         ),

@@ -7,7 +7,6 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:intl/intl.dart';
 import '../providers/data_provider.dart';
 import '../services/nfc_service.dart';
-import '../theme/atelier_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/zoomable_image_viewer.dart';
 import 'qr_share_screen.dart';

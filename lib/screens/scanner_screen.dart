@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/groq_service.dart';
 import '../services/local_transformer_service.dart';
 import '../services/image_processor_service.dart';

@@ -502,13 +502,3 @@ class _HomeViewState extends ConsumerState<_HomeView> {
     return v.toLowerCase() == 'not found' ? '' : v;
   }
 }
-
-// Simple icon class for person icon
-class PersonIcon extends StatelessWidget {
-  const PersonIcon({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(Icons.person);
-  }
-}
