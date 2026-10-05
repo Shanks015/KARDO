@@ -10,6 +10,7 @@ import 'scanner_screen.dart';
 import 'settings_screen.dart';
 import 'sheet_data_screen.dart';
 import 'export_screen.dart';
+import 'insights_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,76 +19,69 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with TickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
-  late AnimationController _fabPulseController;
 
-  final List<Widget> _screens = [
-    const _HomeView(),
-    const SheetDataScreen(),
-    const ExportScreen(),
-    const SettingsScreen(),
-  ];
+  List<Widget> get _screens => [
+        _HomeView(onGoToTab: (index) => setState(() => _currentIndex = index)),
+        const SheetDataScreen(),
+        const InsightsScreen(),
+        const SettingsScreen(),
+      ];
 
-  @override
-  void initState() {
-    super.initState();
-    _fabPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _fabPulseController.dispose();
-    super.dispose();
-  }
+  void _goToTab(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).extension<KardoTokensExtension>()!.tokens;
 
-    return Scaffold(
-      backgroundColor: t.scaffoldBackground,
-      body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+    // Back on a non-home tab returns to Home instead of killing the app;
+    // Back on Home exits — same contract iOS gives its tab bar.
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && mounted) _goToTab(0);
+      },
+      child: Scaffold(
+        backgroundColor: t.scaffoldBackground,
+        body: SafeArea(
+          child: IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
         ),
-      ),
-      floatingActionButton: IOSFloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ScannerScreen()),
+        floatingActionButton: IOSFloatingActionButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ScannerScreen()),
+          ),
+          icon: Icons.add,
+          tooltip: 'Scan Card',
         ),
-        icon: Icons.add,
-        tooltip: 'Scan Card',
-      ),
-      floatingActionButtonLocation:
-          FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: IOSBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Library',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.upload),
-            label: 'Export',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+        floatingActionButtonLocation:
+            FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: IOSBottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: _goToTab,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list),
+              label: 'Library',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.insights),
+              label: 'Insights',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -95,7 +89,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 // ── Home View ──────────────────────────────────────────────────────────────
 class _HomeView extends ConsumerStatefulWidget {
-  const _HomeView();
+  final void Function(int index) onGoToTab;
+
+  const _HomeView({required this.onGoToTab});
 
   @override
   ConsumerState<_HomeView> createState() => _HomeViewState();
@@ -217,11 +213,7 @@ class _HomeViewState extends ConsumerState<_HomeView> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const SheetDataScreen()),
-                      ),
+                      onPressed: () => widget.onGoToTab(1),
                       child: Text(
                         'View All Scans',
                         style: TextStyle(
