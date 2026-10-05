@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -62,19 +64,61 @@ class _KardoAppState extends ConsumerState<KardoApp>
       theme: LiquidGlassTheme.lightTheme,
       darkTheme: LiquidGlassTheme.darkTheme,
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      // Status bar icons follow the active theme so the bar never
+      // disappears into the scaffold behind it.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const _BrandedLoading();
           }
           if (snapshot.hasData && snapshot.data != null) {
             return const HomeScreen();
           }
           return const LoginScreen();
         },
+      ),
+    );
+  }
+}
+
+/// Auth handshake screen — logo + wordmark on the themed scaffold, so the
+/// native splash hands off without a jarring Material spinner.
+class _BrandedLoading extends StatelessWidget {
+  const _BrandedLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/kardo_logo.png',
+              width: 96,
+              height: 96,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Kardo Scan',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 36),
+            const CupertinoActivityIndicator(radius: 13),
+          ],
+        ),
       ),
     );
   }

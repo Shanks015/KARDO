@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tokens.dart';
@@ -62,6 +63,18 @@ class LiquidGlassTheme {
   static const double _mediumRadius = 16.0;
   static const double _largeRadius = 22.0;
   static const double _extraLargeRadius = 30.0;
+
+  // Push navigation slides from the right on every platform — the iOS feel
+  // the rest of the component kit already follows.
+  static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+      TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+    },
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOKEN DEFINITIONS
@@ -272,6 +285,7 @@ class LiquidGlassTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: _lightScaffold,
+      pageTransitionsTheme: _pageTransitions,
       colorScheme: ColorScheme.light(
         brightness: Brightness.light,
         primary: _lightAccent,
@@ -343,6 +357,7 @@ class LiquidGlassTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: _darkScaffold,
+      pageTransitionsTheme: _pageTransitions,
       colorScheme: ColorScheme.dark(
         brightness: Brightness.dark,
         primary: _darkAccent,
