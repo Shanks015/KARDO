@@ -68,6 +68,7 @@ dependencies:
   googleapis_auth: ^2.3.3
   archive: ^3.6.1
   http: ^1.6.0
+  file_picker: ^11.0.3
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package

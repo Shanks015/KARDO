@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/config_provider.dart';
 import '../providers/data_provider.dart';
 import '../theme/tokens.dart';
 import '../widgets/ios_components.dart';
 import '../widgets/kardo_components.dart';
 import '../services/google_drive_service.dart';
+import '../services/old_version_import_service.dart';
 import 'export_screen.dart';
+import 'insights_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -198,6 +201,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         MaterialPageRoute(
                             builder: (_) => const ExportScreen()),
                       ),
+                    ),
+                    const Divider(height: 24),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      leading: Icon(Icons.file_download_rounded,
+                          color: t.accent, size: 22),
+                      title: Text(
+                        'Import from Old Kardo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: t.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Load cards from the old app’s backup file',
+                        style: TextStyle(
+                            fontSize: 12, color: t.textSecondary),
+                      ),
+                      trailing: Icon(Icons.chevron_right_rounded,
+                          color: t.textTertiary),
+                      onTap: _isLoading ? null : _handleImportOldVersion,
                     ),
                   ],
                 ),
@@ -610,6 +636,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _isLoading = false;
         _lastBackupTime = 'Never';
       });
+    }
+  }
+
+  Future<void> _handleImportOldVersion() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.any,
+        withData: true,
+      );
+      if (picked == null || !mounted) return;
+
+      final bytes = picked.files.single.bytes;
+      if (bytes == null) {
+        showKardoSnack(context, 'Could not read the selected file.',
+            kind: KardoSnackKind.error);
+        return;
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Import old Kardo data?'),
+          content: const Text(
+              'Cards from the backup file are added to your collection. '
+              'Duplicates are skipped and nothing you already have is deleted.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+
+      setState(() => _isLoading = true);
+      final result = await OldVersionImportService.importFromZipBytes(bytes);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ref.read(localCardsProvider.notifier).loadCards();
+      ref.invalidate(localCardsProviderForInsights);
+
+      final buffer = StringBuffer(
+          'Imported ${result.imported} ${result.imported == 1 ? 'card' : 'cards'}');
+      if (result.skipped > 0) {
+        buffer.write(', skipped ${result.skipped} duplicates');
+      }
+      if (result.photos > 0) {
+        buffer.write(', ${result.photos} new photos');
+      }
+      showKardoSnack(context, '$buffer.',
+          kind: result.imported > 0
+              ? KardoSnackKind.success
+              : KardoSnackKind.info);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        showKardoSnack(context, 'Import failed: $msg',
+            kind: KardoSnackKind.error);
+      }
     }
   }
 
